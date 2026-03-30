@@ -45,7 +45,7 @@ export default function ContactsPage() {
     try {
       const { data, error } = await retryQuery(() => supabase.from("contacts").select("*").order("name"));
       if (error) { toast.error("Failed to load contacts"); console.error(error); }
-      else setContacts(data || []);
+      else setContacts((data as any) || []);
     } catch (e) {
       console.error("Contacts fetch error:", e);
       toast.error("Failed to load contacts");

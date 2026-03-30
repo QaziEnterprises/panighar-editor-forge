@@ -65,8 +65,8 @@ export default function PaymentRemindersWidget() {
           if (!grouped.has(cid)) {
             grouped.set(cid, {
               customer_id: cid,
-              customer_name: contact?.name || "Unknown",
-              phone: contact?.phone || null,
+              customer_name: (contact as any)?.name || "Unknown",
+              phone: (contact as any)?.phone || null,
               total_due: 0,
               oldest_date: sale.date,
               invoice_count: 0,

@@ -42,8 +42,8 @@ export default function ProductsPage() {
         retryQuery(() => supabase.from("products").select("*").order("name")),
         retryQuery(() => supabase.from("product_categories").select("*").order("name")),
       ]);
-      setProducts(prods || []);
-      setCategories(cats || []);
+      setProducts((prods as any) || []);
+      setCategories((cats as any) || []);
     } catch (e) {
       console.error("Products fetch error:", e);
       toast.error("Failed to load products");
