@@ -39,8 +39,8 @@ export default function ExpensesPage() {
         retryQuery(() => supabase.from("expenses").select("*").order("date", { ascending: false })),
         retryQuery(() => supabase.from("expense_categories").select("*").order("name")),
       ]);
-      setExpenses(exps || []);
-      setCategories(cats || []);
+      setExpenses((exps as any) || []);
+      setCategories((cats as any) || []);
     } catch (e) {
       console.error("Expenses fetch error:", e);
       toast.error("Failed to load expenses");

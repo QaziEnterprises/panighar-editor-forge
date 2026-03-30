@@ -109,9 +109,9 @@ export default function PurchasesPage() {
         retryQuery(() => supabase.from("contacts").select("id, name").eq("type", "supplier").order("name")),
         retryQuery(() => supabase.from("products").select("id, name, purchase_price, quantity").order("name")),
       ]);
-      setPurchases(purch || []);
-      setSuppliers(supps || []);
-      setProducts(prods || []);
+      setPurchases((purch as any) || []);
+      setSuppliers((supps as any) || []);
+      setProducts((prods as any) || []);
     } catch (e) {
       console.error("Purchases fetch error:", e);
       toast.error("Failed to load purchases");

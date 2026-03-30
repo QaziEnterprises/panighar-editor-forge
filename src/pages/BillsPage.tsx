@@ -105,8 +105,8 @@ export default function BillsPage() {
           retryQuery(() => supabase.from("sale_transactions").select("*").order("created_at", { ascending: false })),
           retryQuery(() => supabase.from("contacts").select("id, name, phone").eq("type", "customer")),
         ]);
-        setSales(s || []);
-        setCustomers(c || []);
+        setSales((s as any) || []);
+        setCustomers((c as any) || []);
       } catch (e) {
         console.error("Bills fetch error:", e);
         toast.error("Failed to load invoices");
@@ -122,7 +122,7 @@ export default function BillsPage() {
 
   const refreshSales = async () => {
     const { data } = await retryQuery(() => supabase.from("sale_transactions").select("*").order("created_at", { ascending: false }));
-    setSales(data || []);
+    setSales((data as any) || []);
   };
 
   // Filtered data
