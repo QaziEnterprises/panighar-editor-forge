@@ -278,6 +278,17 @@ export default function ReportsPage() {
     const grandReceived = grandCash + grandBank + grandJc + grandEp;
     const totalDue = totalBilled - grandReceived;
 
+    // Expenses section
+    const totalExpensesAmt = expenses.reduce((s, e) => s + e.amount, 0);
+    let expensesHtml = "";
+    if (expenses.length > 0) {
+      expensesHtml = `<div class="section-block"><p class="section-title">💰 Expenses</p><table><thead><tr><th style="width:30px">#</th><th>Description</th><th>Method</th><th style="width:100px" class="text-right">Amount</th></tr></thead><tbody>`;
+      expenses.forEach((e, i) => {
+        expensesHtml += `<tr><td>${i + 1}</td><td>${e.description || "—"}</td><td style="text-transform:capitalize">${e.payment_method || "—"}</td><td class="text-right bold">Rs ${e.amount.toLocaleString()}</td></tr>`;
+      });
+      expensesHtml += `</tbody><tfoot><tr class="section-total" style="background:#c0392b;color:#fff;"><td colspan="3" class="bold">Total Expenses (${expenses.length})</td><td class="text-right bold">Rs ${totalExpensesAmt.toLocaleString()}</td></tr></tfoot></table></div>`;
+    }
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) { toast.error("Please allow popups"); return; }
     printWindow.document.write(`<html><head><title>Summary - ${date}</title>
@@ -321,10 +332,10 @@ export default function ReportsPage() {
 
       <div class="overview-grid">
         <div class="overview-card"><div class="label">Total Billed (${day.salesCount} bills)</div><div class="value" style="color:#222">Rs ${totalBilled.toLocaleString()}</div></div>
-        <div class="overview-card"><div class="label">Total Received</div><div class="value" style="color:#2d7d46">Rs ${totalReceived.toLocaleString()}</div></div>
+        <div class="overview-card"><div class="label">Total Received</div><div class="value" style="color:#2d7d46">Rs ${grandReceived.toLocaleString()}</div></div>
         <div class="overview-card"><div class="label">Outstanding / Due</div><div class="value" style="color:#e67e22">Rs ${totalDue.toLocaleString()}</div></div>
         <div class="overview-card"><div class="label">Expenses (${day.expensesCount})</div><div class="value" style="color:#c0392b">Rs ${day.totalExpenses.toLocaleString()}</div></div>
-        <div class="overview-card highlight" style="grid-column:span 2"><div class="label">Net Revenue (Received − Expenses)</div><div class="value" style="color:${(totalReceived - day.totalExpenses) >= 0 ? '#2ecc71' : '#e74c3c'}">Rs ${(totalReceived - day.totalExpenses).toLocaleString()}</div></div>
+        <div class="overview-card highlight" style="grid-column:span 2"><div class="label">Net Revenue (Received − Expenses)</div><div class="value" style="color:${(grandReceived - day.totalExpenses) >= 0 ? '#2ecc71' : '#e74c3c'}">Rs ${(grandReceived - day.totalExpenses).toLocaleString()}</div></div>
       </div>
 
       ${billSectionsHtml}
