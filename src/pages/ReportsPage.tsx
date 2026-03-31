@@ -193,7 +193,15 @@ export default function ReportsPage() {
       const hasAmounts = Object.values(breakdown).some(v => v > 0);
       if (!hasAmounts && Object.keys(breakdown).length === 1) {
         const method = Object.keys(breakdown)[0];
-        breakdown[method] = b.paid_amount || b.total;
+        // For "due" bills with no paid_amount, nothing was received
+        if (b.payment_status === "due" && b.paid_amount === 0) {
+          breakdown[method] = 0;
+        } else if (b.paid_amount > 0) {
+          breakdown[method] = b.paid_amount;
+        } else {
+          // "paid" status but paid_amount not filled → assume total was received
+          breakdown[method] = b.total;
+        }
       }
       return { ...b, breakdown };
     });
