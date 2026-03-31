@@ -129,7 +129,7 @@ export default function ReportsPage() {
 
     // Fetch full data: sales with items, contacts, expenses
     const [{ data: salesRaw }, { data: contacts }, { data: saleItems }, { data: expensesRaw }] = await Promise.all([
-      supabase.from("sale_transactions").select("id, invoice_no, total, payment_method, payment_status, customer_id, date").eq("date", date),
+      supabase.from("sale_transactions").select("id, invoice_no, total, paid_amount, payment_method, payment_status, customer_id, date").eq("date", date),
       supabase.from("contacts").select("id, name"),
       supabase.from("sale_items").select("sale_id, product_name, quantity, unit_price, subtotal"),
       supabase.from("expenses").select("id, amount, description, payment_method, reference_no").eq("date", date),
@@ -146,6 +146,7 @@ export default function ReportsPage() {
       id: s.id,
       invoice_no: s.invoice_no,
       total: Number(s.total || 0),
+      paid_amount: Number(s.paid_amount || 0),
       payment_method: s.payment_method,
       payment_status: s.payment_status,
       customer_name: s.customer_id ? (contactMap.get(s.customer_id) || "Unknown") : "Walk-in",
@@ -168,12 +169,15 @@ export default function ReportsPage() {
     const buildBillTable = (billList: typeof bills, accentColor: string) => {
       if (billList.length === 0) return `<div class="empty-section">No bills in this category</div>`;
       const sectionTotal = billList.reduce((s, b) => s + b.total, 0);
-      let html = `<table><thead><tr><th style="width:30px">#</th><th>Customer</th><th>Products</th><th style="width:100px" class="text-right">Amount</th></tr></thead><tbody>`;
+      const sectionPaid = billList.reduce((s, b) => s + b.paid_amount, 0);
+      const sectionDue = sectionTotal - sectionPaid;
+      let html = `<table><thead><tr><th style="width:30px">#</th><th>Customer</th><th>Products</th><th style="width:80px" class="text-right">Bill</th><th style="width:80px" class="text-right">Paid</th><th style="width:80px" class="text-right">Due</th></tr></thead><tbody>`;
       billList.forEach((b, i) => {
         const products = b.items.map(it => `${it.product_name || "Item"} ×${it.quantity}`).join(" · ") || "—";
-        html += `<tr><td>${i + 1}</td><td class="bold">${b.customer_name}</td><td class="products-cell">${products}</td><td class="text-right bold">Rs ${b.total.toLocaleString()}</td></tr>`;
+        const due = b.total - b.paid_amount;
+        html += `<tr><td>${i + 1}</td><td class="bold">${b.customer_name}</td><td class="products-cell">${products}</td><td class="text-right">Rs ${b.total.toLocaleString()}</td><td class="text-right" style="color:#2d7d46">Rs ${b.paid_amount.toLocaleString()}</td><td class="text-right" style="color:${due > 0 ? '#c0392b' : '#888'}">${due > 0 ? 'Rs ' + due.toLocaleString() : '—'}</td></tr>`;
       });
-      html += `</tbody><tfoot><tr class="section-total" style="background:${accentColor};color:#fff;"><td colspan="3" class="bold">Total — ${billList.length} bill${billList.length > 1 ? 's' : ''}</td><td class="text-right bold">Rs ${sectionTotal.toLocaleString()}</td></tr></tfoot></table>`;
+      html += `</tbody><tfoot><tr class="section-total" style="background:${accentColor};color:#fff;"><td colspan="3" class="bold">Total — ${billList.length} bill${billList.length > 1 ? 's' : ''}</td><td class="text-right bold">Rs ${sectionTotal.toLocaleString()}</td><td class="text-right bold">Rs ${sectionPaid.toLocaleString()}</td><td class="text-right bold">${sectionDue > 0 ? 'Rs ' + sectionDue.toLocaleString() : '—'}</td></tr></tfoot></table>`;
       return html;
     };
 
@@ -226,6 +230,9 @@ export default function ReportsPage() {
     const jcTotal = bills.filter(b => b.payment_method === "jazzcash" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
     const epTotal = bills.filter(b => b.payment_method === "easypaisa" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
     const creditTotal = creditBills.reduce((s, b) => s + b.total, 0);
+    const totalBilled = bills.reduce((s, b) => s + b.total, 0);
+    const totalReceived = cashTotal + bankTotal + jcTotal + epTotal;
+    const totalDue = totalBilled - totalReceived;
     const netSales = day.totalSales - day.totalExpenses;
 
     const printWindow = window.open("", "_blank");
@@ -270,25 +277,28 @@ export default function ReportsPage() {
       <hr class="divider">
 
       <div class="overview-grid">
-        <div class="overview-card"><div class="label">Total Sales (${day.salesCount})</div><div class="value" style="color:#2d7d46">Rs ${day.totalSales.toLocaleString()}</div></div>
+        <div class="overview-card"><div class="label">Total Billed (${day.salesCount} bills)</div><div class="value" style="color:#222">Rs ${totalBilled.toLocaleString()}</div></div>
+        <div class="overview-card"><div class="label">Total Received</div><div class="value" style="color:#2d7d46">Rs ${totalReceived.toLocaleString()}</div></div>
+        <div class="overview-card"><div class="label">Outstanding / Due</div><div class="value" style="color:#e67e22">Rs ${totalDue.toLocaleString()}</div></div>
         <div class="overview-card"><div class="label">Expenses (${day.expensesCount})</div><div class="value" style="color:#c0392b">Rs ${day.totalExpenses.toLocaleString()}</div></div>
-        <div class="overview-card highlight"><div class="label">Net Revenue</div><div class="value" style="color:${netSales >= 0 ? '#2ecc71' : '#e74c3c'}">Rs ${netSales.toLocaleString()}</div></div>
-        <div class="overview-card"><div class="label">Credit Outstanding</div><div class="value" style="color:#e67e22">Rs ${creditTotal.toLocaleString()}</div></div>
+        <div class="overview-card highlight" style="grid-column:span 2"><div class="label">Net Revenue (Received − Expenses)</div><div class="value" style="color:${(totalReceived - day.totalExpenses) >= 0 ? '#2ecc71' : '#e74c3c'}">Rs ${(totalReceived - day.totalExpenses).toLocaleString()}</div></div>
       </div>
 
       ${billSectionsHtml}
       ${expensesHtml}
 
       <div class="section-block">
-        <p class="section-title">📋 Day Closing Summary</p>
+        <p class="section-title">📋 Payment Collection Summary</p>
         <table class="closing-table">
+          <thead><tr><th>Payment Method</th><th class="text-right">Amount Received</th></tr></thead>
           <tbody>
-            ${cashTotal > 0 ? `<tr><td><span class="method-icon">💵</span> Cash in Hand</td><td class="text-right bold">Rs ${cashTotal.toLocaleString()}</td></tr>` : ''}
+            ${cashTotal > 0 ? `<tr><td><span class="method-icon">💵</span> Cash</td><td class="text-right bold">Rs ${cashTotal.toLocaleString()}</td></tr>` : ''}
             ${bankTotal > 0 ? `<tr><td><span class="method-icon">🏦</span> Bank Transfer</td><td class="text-right bold">Rs ${bankTotal.toLocaleString()}</td></tr>` : ''}
             ${jcTotal > 0 ? `<tr><td><span class="method-icon">📱</span> JazzCash</td><td class="text-right bold">Rs ${jcTotal.toLocaleString()}</td></tr>` : ''}
             ${epTotal > 0 ? `<tr><td><span class="method-icon">📲</span> EasyPaisa</td><td class="text-right bold">Rs ${epTotal.toLocaleString()}</td></tr>` : ''}
-            ${creditTotal > 0 ? `<tr><td><span class="method-icon">📋</span> Credit / Udhar</td><td class="text-right bold" style="color:#e67e22">Rs ${creditTotal.toLocaleString()}</td></tr>` : ''}
-            <tr class="grand"><td>Total Day Sales</td><td class="text-right">Rs ${day.totalSales.toLocaleString()}</td></tr>
+            <tr class="grand"><td>Total Received</td><td class="text-right">Rs ${totalReceived.toLocaleString()}</td></tr>
+            ${totalDue > 0 ? `<tr style="background:#fff3e0;"><td class="bold" style="color:#e67e22">⏳ Remaining Due / Udhar</td><td class="text-right bold" style="color:#e67e22">Rs ${totalDue.toLocaleString()}</td></tr>` : ''}
+            <tr style="background:#333;color:#fff;font-size:13px;font-weight:700;"><td>Total Billed</td><td class="text-right">Rs ${totalBilled.toLocaleString()}</td></tr>
           </tbody>
         </table>
       </div>
