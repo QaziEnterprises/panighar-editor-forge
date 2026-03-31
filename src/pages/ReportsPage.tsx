@@ -118,86 +118,166 @@ export default function ReportsPage() {
     }
   };
 
-  const handlePrintDaySummary = (date: string) => {
+  const handlePrintDaySummary = async (date: string) => {
     const day = summaries.find(s => s.date === date);
-    const invoices = invoiceDetails[date] || [];
     if (!day) return;
+
+    const dateDisplay = new Date(date + "T00:00:00").toLocaleDateString("en-PK", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+    const timeStr = new Date().toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+    // Fetch full data: sales with items, contacts, expenses
+    const [{ data: salesRaw }, { data: contacts }, { data: saleItems }, { data: expensesRaw }] = await Promise.all([
+      supabase.from("sale_transactions").select("id, invoice_no, total, payment_method, payment_status, customer_id, date").eq("date", date),
+      supabase.from("contacts").select("id, name"),
+      supabase.from("sale_items").select("sale_id, product_name, quantity, unit_price, subtotal"),
+      supabase.from("expenses").select("id, amount, description, payment_method, reference_no").eq("date", date),
+    ]);
+
+    const contactMap = new Map((contacts || []).map(c => [c.id, c.name]));
+    const itemsMap = new Map<string, any[]>();
+    for (const item of (saleItems || [])) {
+      if (!itemsMap.has(item.sale_id)) itemsMap.set(item.sale_id, []);
+      itemsMap.get(item.sale_id)!.push(item);
+    }
+
+    const bills = (salesRaw || []).map(s => ({
+      id: s.id,
+      invoice_no: s.invoice_no,
+      total: Number(s.total || 0),
+      payment_method: s.payment_method,
+      payment_status: s.payment_status,
+      customer_name: s.customer_id ? (contactMap.get(s.customer_id) || "Unknown") : "Walk-in",
+      items: (itemsMap.get(s.id) || []).map(i => ({
+        product_name: i.product_name,
+        quantity: Number(i.quantity),
+        unit_price: Number(i.unit_price),
+        subtotal: Number(i.subtotal),
+      })),
+    }));
+
+    const expenses = (expensesRaw || []).map(e => ({
+      amount: Number(e.amount || 0),
+      description: e.description,
+      payment_method: e.payment_method,
+      reference_no: e.reference_no,
+    }));
+
+    // Build bill table HTML
+    const buildBillTable = (billList: typeof bills, shade: string) => {
+      if (billList.length === 0) return `<p style="color:#888;font-style:italic;margin:4px 0 12px;">No bills</p>`;
+      const sectionTotal = billList.reduce((s, b) => s + b.total, 0);
+      let html = `<table><thead><tr><th>#</th><th>Invoice</th><th>Customer</th><th>Products</th><th class="text-right">Amount (PKR)</th></tr></thead><tbody>`;
+      billList.forEach((b, i) => {
+        const products = b.items.map(it => `${it.product_name || "Item"} x${it.quantity}`).join(", ") || "—";
+        html += `<tr style="background:${shade}"><td>${i + 1}</td><td>${b.invoice_no || "—"}</td><td>${b.customer_name}</td><td style="font-size:10px;max-width:200px;word-wrap:break-word;">${products}</td><td class="text-right bold">PKR ${b.total.toLocaleString()}</td></tr>`;
+      });
+      html += `</tbody><tfoot><tr style="background:#000;color:#fff;"><td colspan="4" class="bold">Section Total (${billList.length} bills)</td><td class="text-right bold">PKR ${sectionTotal.toLocaleString()}</td></tr></tfoot></table>`;
+      return html;
+    };
+
+    const paymentMethods = [
+      { key: "cash", label: "💵 Cash Bills", shade: "#fff" },
+      { key: "bank", label: "🏦 Bank Transfer Bills", shade: "#e8e8e8" },
+      { key: "jazzcash", label: "📱 JazzCash Bills", shade: "#d0d0d0" },
+      { key: "easypaisa", label: "📲 EasyPaisa Bills", shade: "#ddd" },
+    ];
+
+    let billSectionsHtml = "";
+    for (const pm of paymentMethods) {
+      const filtered = bills.filter(b => b.payment_method === pm.key && b.payment_status === "paid");
+      billSectionsHtml += `<p class="section-title">${pm.label}</p>`;
+      billSectionsHtml += buildBillTable(filtered, pm.shade);
+    }
+
+    const creditBills = bills.filter(b => b.payment_status === "due" || b.payment_status === "partial");
+    billSectionsHtml += `<p class="section-title">📋 Credit / Udhar Bills</p>`;
+    billSectionsHtml += buildBillTable(creditBills, "#b8b8b8");
+
+    const knownMethods = new Set(["cash", "bank", "jazzcash", "easypaisa"]);
+    const otherBills = bills.filter(b => b.payment_status === "paid" && !knownMethods.has(b.payment_method || ""));
+    if (otherBills.length > 0) {
+      billSectionsHtml += `<p class="section-title">🔖 Other Payment Method Bills</p>`;
+      billSectionsHtml += buildBillTable(otherBills, "#c8c8c8");
+    }
+
+    // Expenses section
+    const totalExpensesAmt = expenses.reduce((s, e) => s + e.amount, 0);
+    let expensesHtml = `<p class="section-title">💰 Expenses</p>`;
+    if (expenses.length === 0) {
+      expensesHtml += `<p style="color:#888;font-style:italic;margin:4px 0 12px;">No expenses</p>`;
+    } else {
+      expensesHtml += `<table><thead><tr><th>#</th><th>Description</th><th>Payment</th><th>Ref</th><th class="text-right">Amount (PKR)</th></tr></thead><tbody>`;
+      expenses.forEach((e, i) => {
+        expensesHtml += `<tr><td>${i + 1}</td><td>${e.description || "—"}</td><td>${e.payment_method || "—"}</td><td>${e.reference_no || "—"}</td><td class="text-right bold">PKR ${e.amount.toLocaleString()}</td></tr>`;
+      });
+      expensesHtml += `</tbody><tfoot><tr style="background:#000;color:#fff;"><td colspan="4" class="bold">Total Expenses (${expenses.length})</td><td class="text-right bold">PKR ${totalExpensesAmt.toLocaleString()}</td></tr></tfoot></table>`;
+    }
+
+    // Payment method totals
+    const cashTotal = bills.filter(b => b.payment_method === "cash" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
+    const bankTotal = bills.filter(b => b.payment_method === "bank" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
+    const jcTotal = bills.filter(b => b.payment_method === "jazzcash" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
+    const epTotal = bills.filter(b => b.payment_method === "easypaisa" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
+    const creditTotal = creditBills.reduce((s, b) => s + b.total, 0);
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) { toast.error("Please allow popups"); return; }
-
-    const cashInvoices = invoices.filter(i => i.payment_method === "cash" && i.payment_status === "paid");
-    const bankInvoices = invoices.filter(i => i.payment_method === "bank" && i.payment_status === "paid");
-    const jcInvoices = invoices.filter(i => i.payment_method === "jazzcash" && i.payment_status === "paid");
-    const epInvoices = invoices.filter(i => i.payment_method === "easypaisa" && i.payment_status === "paid");
-    const dueInvoices = invoices.filter(i => i.payment_status === "due" || i.payment_status === "partial");
-
-    const cashTotal = cashInvoices.reduce((s, i) => s + i.total, 0);
-    const bankTotal = bankInvoices.reduce((s, i) => s + i.total, 0);
-    const jcTotal = jcInvoices.reduce((s, i) => s + i.total, 0);
-    const epTotal = epInvoices.reduce((s, i) => s + i.total, 0);
-    const dueTotal = dueInvoices.reduce((s, i) => s + i.total, 0);
-
-    const invoiceRows = invoices.map((inv, i) =>
-      `<tr><td>${i + 1}</td><td>${inv.invoice_no || "—"}</td><td>${inv.customer_name}</td><td>${inv.payment_method.toUpperCase()}</td><td style="text-transform:capitalize">${inv.payment_status}</td><td style="text-align:right;font-weight:600">PKR ${inv.total.toLocaleString()}</td></tr>`
-    ).join("");
-
     printWindow.document.write(`<html><head><title>Daily Summary - ${date}</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: 'Segoe UI', sans-serif; padding: 20px; font-size: 12px; color: #222; }
-      h1 { font-size: 20px; text-align: center; margin-bottom: 4px; }
-      .subtitle { text-align: center; color: #666; font-size: 12px; margin-bottom: 16px; }
-      .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; border: 1px solid #ddd; padding: 12px; border-radius: 4px; }
-      .summary-item { display: flex; justify-content: space-between; padding: 4px 0; }
-      .summary-item.total { border-top: 2px solid #000; padding-top: 8px; font-size: 14px; font-weight: 700; }
+      body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; font-size: 12px; color: #000; }
+      h1 { text-align: center; font-size: 18px; margin-bottom: 4px; }
+      .tagline { text-align: center; font-size: 12px; color: #333; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+      .header-divider { width: 60%; margin: 8px auto; border-top: 2px solid #000; border-bottom: 1px solid #000; padding-top: 2px; }
+      .subtitle { text-align: center; font-size: 11px; color: #555; margin-bottom: 2px; }
+      .subtitle:last-of-type { margin-bottom: 16px; }
       table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-      th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 11px; }
-      th { background: #f5f5f5; font-weight: 600; }
-      .section-title { font-size: 14px; font-weight: 700; margin: 16px 0 8px; border-bottom: 1px solid #000; padding-bottom: 4px; }
-      .footer { text-align: center; margin-top: 24px; font-size: 10px; color: #888; border-top: 1px dashed #ccc; padding-top: 8px; }
+      th, td { border: 1px solid #000; padding: 5px 8px; text-align: left; font-size: 11px; }
+      th { font-weight: 700; font-size: 10px; text-transform: uppercase; background: #f0f0f0; }
+      .text-right { text-align: right; }
+      .text-center { text-align: center; }
+      .bold { font-weight: 700; }
+      .section-title { font-size: 13px; font-weight: 700; margin: 16px 0 8px; border-bottom: 2px solid #000; padding-bottom: 4px; }
+      .grand-total { background: #000; color: #fff; font-size: 13px; }
+      .footer { text-align: center; margin-top: 20px; font-size: 10px; color: #888; border-top: 1px dashed #999; padding-top: 8px; }
       @media print { body { padding: 0; } }
     </style></head><body>
-    <h1>Qazi Enterprises - Daily Summary</h1>
-    <p class="subtitle">Date: ${date} | Generated: ${new Date().toLocaleString()}</p>
+      <h1>Qazi Enterprises</h1>
+      <p class="tagline">Wholesale & Retail — Building Materials & General Store</p>
+      <div class="header-divider"></div>
+      <p class="subtitle">📊 Daily Summary Report</p>
+      <p class="subtitle">${dateDisplay} · Generated at ${timeStr}</p>
 
-    <div class="summary-grid">
-      <div>
-        <div class="summary-item"><span>Total Sales (${day.salesCount} invoices):</span><span style="color:green;font-weight:600">PKR ${day.totalSales.toLocaleString()}</span></div>
-        <div class="summary-item"><span>Total Purchases:</span><span style="color:blue;font-weight:600">PKR ${day.totalPurchases.toLocaleString()}</span></div>
-        <div class="summary-item"><span>Total Expenses:</span><span style="color:red;font-weight:600">PKR ${day.totalExpenses.toLocaleString()}</span></div>
-      </div>
-      <div>
-        <div class="summary-item"><span>Cash Sales:</span><span>PKR ${cashTotal.toLocaleString()}</span></div>
-        <div class="summary-item"><span>Bank/JC/EP:</span><span>PKR ${(bankTotal + jcTotal + epTotal).toLocaleString()}</span></div>
-        <div class="summary-item"><span>Credit/Due:</span><span style="color:orange">PKR ${dueTotal.toLocaleString()}</span></div>
-      </div>
-    </div>
-    <div class="summary-grid" style="grid-template-columns:1fr">
-      <div class="summary-item total"><span>Net Profit:</span><span style="color:${day.profit >= 0 ? 'green' : 'red'}">PKR ${day.profit.toLocaleString()}</span></div>
-    </div>
+      <p class="section-title">Overview</p>
+      <table>
+        <thead><tr><th>Category</th><th class="text-center">Count</th><th class="text-right">Amount (PKR)</th></tr></thead>
+        <tbody>
+          <tr><td class="bold">Total Sales</td><td class="text-center">${day.salesCount}</td><td class="text-right bold">PKR ${day.totalSales.toLocaleString()}</td></tr>
+          <tr><td class="bold">Total Purchases</td><td class="text-center">${day.purchasesCount}</td><td class="text-right bold">PKR ${day.totalPurchases.toLocaleString()}</td></tr>
+          <tr><td class="bold">Total Expenses</td><td class="text-center">${day.expensesCount}</td><td class="text-right bold">PKR ${day.totalExpenses.toLocaleString()}</td></tr>
+          <tr class="grand-total"><td class="bold" colspan="2">Net Profit / Loss</td><td class="text-right bold">PKR ${day.profit.toLocaleString()}</td></tr>
+        </tbody>
+      </table>
 
-    <p class="section-title">All Invoices (${invoices.length})</p>
-    <table>
-      <thead><tr><th>#</th><th>Invoice</th><th>Customer</th><th>Payment</th><th>Status</th><th style="text-align:right">Amount</th></tr></thead>
-      <tbody>${invoiceRows}</tbody>
-      <tfoot><tr style="font-weight:700;background:#f5f5f5"><td colspan="5">Total</td><td style="text-align:right">PKR ${day.totalSales.toLocaleString()}</td></tr></tfoot>
-    </table>
+      ${billSectionsHtml}
+      ${expensesHtml}
 
-    <p class="section-title">Amount Breakdown</p>
-    <table>
-      <thead><tr><th>Method</th><th>Count</th><th style="text-align:right">Amount</th></tr></thead>
-      <tbody>
-        <tr><td>💵 Cash</td><td>${cashInvoices.length}</td><td style="text-align:right">PKR ${cashTotal.toLocaleString()}</td></tr>
-        <tr><td>🏦 Bank</td><td>${bankInvoices.length}</td><td style="text-align:right">PKR ${bankTotal.toLocaleString()}</td></tr>
-        <tr><td>📱 JazzCash</td><td>${jcInvoices.length}</td><td style="text-align:right">PKR ${jcTotal.toLocaleString()}</td></tr>
-        <tr><td>📲 EasyPaisa</td><td>${epInvoices.length}</td><td style="text-align:right">PKR ${epTotal.toLocaleString()}</td></tr>
-        <tr><td>⏳ Credit/Due</td><td>${dueInvoices.length}</td><td style="text-align:right;color:orange">PKR ${dueTotal.toLocaleString()}</td></tr>
-      </tbody>
-      <tfoot><tr style="font-weight:700;background:#f5f5f5"><td>Total</td><td>${invoices.length}</td><td style="text-align:right">PKR ${day.totalSales.toLocaleString()}</td></tr></tfoot>
-    </table>
+      <p class="section-title">End of Day Closing</p>
+      <table>
+        <tbody>
+          <tr style="background:#fff;"><td class="bold">Cash in Hand</td><td class="text-right bold">PKR ${cashTotal.toLocaleString()}</td></tr>
+          <tr style="background:#e8e8e8;"><td class="bold">Bank Transfer</td><td class="text-right bold">PKR ${bankTotal.toLocaleString()}</td></tr>
+          <tr style="background:#d0d0d0;"><td class="bold">JazzCash</td><td class="text-right bold">PKR ${jcTotal.toLocaleString()}</td></tr>
+          <tr style="background:#ddd;"><td class="bold">EasyPaisa</td><td class="text-right bold">PKR ${epTotal.toLocaleString()}</td></tr>
+          <tr style="background:#b8b8b8;"><td class="bold">Credit Given (Udhar)</td><td class="text-right bold">PKR ${creditTotal.toLocaleString()}</td></tr>
+          <tr class="grand-total"><td class="bold">Total Day Sales</td><td class="text-right bold">PKR ${day.totalSales.toLocaleString()}</td></tr>
+        </tbody>
+      </table>
 
-    <div class="footer"><p>Qazi Enterprises — All rights reserved</p></div>
-    <script>window.onload = function() { window.print(); window.close(); }<\/script>
+      <div class="footer"><p>Qazi Enterprises — Panighar · All Rights Reserved</p></div>
+      <script>window.onload = function() { window.print(); window.close(); }<\/script>
     </body></html>`);
     printWindow.document.close();
   };
