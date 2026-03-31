@@ -169,12 +169,15 @@ export default function ReportsPage() {
     const buildBillTable = (billList: typeof bills, accentColor: string) => {
       if (billList.length === 0) return `<div class="empty-section">No bills in this category</div>`;
       const sectionTotal = billList.reduce((s, b) => s + b.total, 0);
-      let html = `<table><thead><tr><th style="width:30px">#</th><th>Customer</th><th>Products</th><th style="width:100px" class="text-right">Amount</th></tr></thead><tbody>`;
+      const sectionPaid = billList.reduce((s, b) => s + b.paid_amount, 0);
+      const sectionDue = sectionTotal - sectionPaid;
+      let html = `<table><thead><tr><th style="width:30px">#</th><th>Customer</th><th>Products</th><th style="width:80px" class="text-right">Bill</th><th style="width:80px" class="text-right">Paid</th><th style="width:80px" class="text-right">Due</th></tr></thead><tbody>`;
       billList.forEach((b, i) => {
         const products = b.items.map(it => `${it.product_name || "Item"} ×${it.quantity}`).join(" · ") || "—";
-        html += `<tr><td>${i + 1}</td><td class="bold">${b.customer_name}</td><td class="products-cell">${products}</td><td class="text-right bold">Rs ${b.total.toLocaleString()}</td></tr>`;
+        const due = b.total - b.paid_amount;
+        html += `<tr><td>${i + 1}</td><td class="bold">${b.customer_name}</td><td class="products-cell">${products}</td><td class="text-right">Rs ${b.total.toLocaleString()}</td><td class="text-right" style="color:#2d7d46">Rs ${b.paid_amount.toLocaleString()}</td><td class="text-right" style="color:${due > 0 ? '#c0392b' : '#888'}">${due > 0 ? 'Rs ' + due.toLocaleString() : '—'}</td></tr>`;
       });
-      html += `</tbody><tfoot><tr class="section-total" style="background:${accentColor};color:#fff;"><td colspan="3" class="bold">Total — ${billList.length} bill${billList.length > 1 ? 's' : ''}</td><td class="text-right bold">Rs ${sectionTotal.toLocaleString()}</td></tr></tfoot></table>`;
+      html += `</tbody><tfoot><tr class="section-total" style="background:${accentColor};color:#fff;"><td colspan="3" class="bold">Total — ${billList.length} bill${billList.length > 1 ? 's' : ''}</td><td class="text-right bold">Rs ${sectionTotal.toLocaleString()}</td><td class="text-right bold">Rs ${sectionPaid.toLocaleString()}</td><td class="text-right bold">${sectionDue > 0 ? 'Rs ' + sectionDue.toLocaleString() : '—'}</td></tr></tfoot></table>`;
       return html;
     };
 
