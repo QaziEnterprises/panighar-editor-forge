@@ -346,11 +346,11 @@ export default function ReportsPage() {
         <table class="closing-table">
           <thead><tr><th>Payment Method</th><th class="text-right">Amount Received</th></tr></thead>
           <tbody>
-            ${cashTotal > 0 ? `<tr><td><span class="method-icon">💵</span> Cash</td><td class="text-right bold">Rs ${cashTotal.toLocaleString()}</td></tr>` : ''}
-            ${bankTotal > 0 ? `<tr><td><span class="method-icon">🏦</span> Bank Transfer</td><td class="text-right bold">Rs ${bankTotal.toLocaleString()}</td></tr>` : ''}
-            ${jcTotal > 0 ? `<tr><td><span class="method-icon">📱</span> JazzCash</td><td class="text-right bold">Rs ${jcTotal.toLocaleString()}</td></tr>` : ''}
-            ${epTotal > 0 ? `<tr><td><span class="method-icon">📲</span> EasyPaisa</td><td class="text-right bold">Rs ${epTotal.toLocaleString()}</td></tr>` : ''}
-            <tr class="grand"><td>Total Received</td><td class="text-right">Rs ${totalReceived.toLocaleString()}</td></tr>
+            ${grandCash > 0 ? `<tr><td><span class="method-icon">💵</span> Cash</td><td class="text-right bold">Rs ${grandCash.toLocaleString()}</td></tr>` : ''}
+            ${grandBank > 0 ? `<tr><td><span class="method-icon">🏦</span> Bank Transfer</td><td class="text-right bold">Rs ${grandBank.toLocaleString()}</td></tr>` : ''}
+            ${grandJc > 0 ? `<tr><td><span class="method-icon">📱</span> JazzCash</td><td class="text-right bold">Rs ${grandJc.toLocaleString()}</td></tr>` : ''}
+            ${grandEp > 0 ? `<tr><td><span class="method-icon">📲</span> EasyPaisa</td><td class="text-right bold">Rs ${grandEp.toLocaleString()}</td></tr>` : ''}
+            <tr class="grand"><td>Total Received</td><td class="text-right">Rs ${grandReceived.toLocaleString()}</td></tr>
             ${totalDue > 0 ? `<tr style="background:#fff3e0;"><td class="bold" style="color:#e67e22">⏳ Remaining Due / Udhar</td><td class="text-right bold" style="color:#e67e22">Rs ${totalDue.toLocaleString()}</td></tr>` : ''}
             <tr style="background:#333;color:#fff;font-size:13px;font-weight:700;"><td>Total Billed</td><td class="text-right">Rs ${totalBilled.toLocaleString()}</td></tr>
           </tbody>
