@@ -267,10 +267,7 @@ export default function DailySalesSummary() {
           <td class="text-right bold">PKR ${b.total.toLocaleString()}</td>
         </tr>`;
       });
-      html += `</tbody><tfoot><tr style="background:#000;color:#fff;">
-        <td colspan="4" class="bold">Section Total (${billList.length} bills)</td>
-        <td class="text-right bold">PKR ${sectionTotal.toLocaleString()}</td>
-      </tr></tfoot></table>`;
+      html += `</tbody></table>`;
       return html;
     };
 
