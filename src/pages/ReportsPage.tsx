@@ -164,55 +164,60 @@ export default function ReportsPage() {
       reference_no: e.reference_no,
     }));
 
-    // Build bill table HTML
-    const buildBillTable = (billList: typeof bills, shade: string) => {
-      if (billList.length === 0) return `<p style="color:#888;font-style:italic;margin:4px 0 12px;">No bills</p>`;
+    // Build bill table HTML - clean & attractive
+    const buildBillTable = (billList: typeof bills, accentColor: string) => {
+      if (billList.length === 0) return `<div class="empty-section">No bills in this category</div>`;
       const sectionTotal = billList.reduce((s, b) => s + b.total, 0);
-      let html = `<table><thead><tr><th>#</th><th>Invoice</th><th>Customer</th><th>Products</th><th class="text-right">Amount (PKR)</th></tr></thead><tbody>`;
+      let html = `<table><thead><tr><th style="width:30px">#</th><th>Customer</th><th>Products</th><th style="width:100px" class="text-right">Amount</th></tr></thead><tbody>`;
       billList.forEach((b, i) => {
-        const products = b.items.map(it => `${it.product_name || "Item"} x${it.quantity}`).join(", ") || "—";
-        html += `<tr style="background:${shade}"><td>${i + 1}</td><td>${b.invoice_no || "—"}</td><td>${b.customer_name}</td><td style="font-size:10px;max-width:200px;word-wrap:break-word;">${products}</td><td class="text-right bold">PKR ${b.total.toLocaleString()}</td></tr>`;
+        const products = b.items.map(it => `${it.product_name || "Item"} ×${it.quantity}`).join(" · ") || "—";
+        html += `<tr><td>${i + 1}</td><td class="bold">${b.customer_name}</td><td class="products-cell">${products}</td><td class="text-right bold">Rs ${b.total.toLocaleString()}</td></tr>`;
       });
-      html += `</tbody><tfoot><tr style="background:#000;color:#fff;"><td colspan="4" class="bold">Section Total (${billList.length} bills)</td><td class="text-right bold">PKR ${sectionTotal.toLocaleString()}</td></tr></tfoot></table>`;
+      html += `</tbody><tfoot><tr class="section-total" style="background:${accentColor};color:#fff;"><td colspan="3" class="bold">Total — ${billList.length} bill${billList.length > 1 ? 's' : ''}</td><td class="text-right bold">Rs ${sectionTotal.toLocaleString()}</td></tr></tfoot></table>`;
       return html;
     };
 
     const paymentMethods = [
-      { key: "cash", label: "💵 Cash Bills", shade: "#fff" },
-      { key: "bank", label: "🏦 Bank Transfer Bills", shade: "#e8e8e8" },
-      { key: "jazzcash", label: "📱 JazzCash Bills", shade: "#d0d0d0" },
-      { key: "easypaisa", label: "📲 EasyPaisa Bills", shade: "#ddd" },
+      { key: "cash", label: "💵 Cash", accent: "#2d7d46" },
+      { key: "bank", label: "🏦 Bank Transfer", accent: "#1a5276" },
+      { key: "jazzcash", label: "📱 JazzCash", accent: "#c0392b" },
+      { key: "easypaisa", label: "📲 EasyPaisa", accent: "#27ae60" },
     ];
 
     let billSectionsHtml = "";
     for (const pm of paymentMethods) {
       const filtered = bills.filter(b => b.payment_method === pm.key && b.payment_status === "paid");
-      billSectionsHtml += `<p class="section-title">${pm.label}</p>`;
-      billSectionsHtml += buildBillTable(filtered, pm.shade);
+      if (filtered.length > 0) {
+        billSectionsHtml += `<div class="section-block"><p class="section-title">${pm.label}</p>`;
+        billSectionsHtml += buildBillTable(filtered, pm.accent);
+        billSectionsHtml += `</div>`;
+      }
     }
 
     const creditBills = bills.filter(b => b.payment_status === "due" || b.payment_status === "partial");
-    billSectionsHtml += `<p class="section-title">📋 Credit / Udhar Bills</p>`;
-    billSectionsHtml += buildBillTable(creditBills, "#b8b8b8");
+    if (creditBills.length > 0) {
+      billSectionsHtml += `<div class="section-block"><p class="section-title">📋 Credit / Udhar</p>`;
+      billSectionsHtml += buildBillTable(creditBills, "#e67e22");
+      billSectionsHtml += `</div>`;
+    }
 
     const knownMethods = new Set(["cash", "bank", "jazzcash", "easypaisa"]);
     const otherBills = bills.filter(b => b.payment_status === "paid" && !knownMethods.has(b.payment_method || ""));
     if (otherBills.length > 0) {
-      billSectionsHtml += `<p class="section-title">🔖 Other Payment Method Bills</p>`;
-      billSectionsHtml += buildBillTable(otherBills, "#c8c8c8");
+      billSectionsHtml += `<div class="section-block"><p class="section-title">🔖 Other</p>`;
+      billSectionsHtml += buildBillTable(otherBills, "#7f8c8d");
+      billSectionsHtml += `</div>`;
     }
 
     // Expenses section
     const totalExpensesAmt = expenses.reduce((s, e) => s + e.amount, 0);
-    let expensesHtml = `<p class="section-title">💰 Expenses</p>`;
-    if (expenses.length === 0) {
-      expensesHtml += `<p style="color:#888;font-style:italic;margin:4px 0 12px;">No expenses</p>`;
-    } else {
-      expensesHtml += `<table><thead><tr><th>#</th><th>Description</th><th>Payment</th><th>Ref</th><th class="text-right">Amount (PKR)</th></tr></thead><tbody>`;
+    let expensesHtml = "";
+    if (expenses.length > 0) {
+      expensesHtml = `<div class="section-block"><p class="section-title">💰 Expenses</p><table><thead><tr><th style="width:30px">#</th><th>Description</th><th>Method</th><th style="width:100px" class="text-right">Amount</th></tr></thead><tbody>`;
       expenses.forEach((e, i) => {
-        expensesHtml += `<tr><td>${i + 1}</td><td>${e.description || "—"}</td><td>${e.payment_method || "—"}</td><td>${e.reference_no || "—"}</td><td class="text-right bold">PKR ${e.amount.toLocaleString()}</td></tr>`;
+        expensesHtml += `<tr><td>${i + 1}</td><td>${e.description || "—"}</td><td style="text-transform:capitalize">${e.payment_method || "—"}</td><td class="text-right bold">Rs ${e.amount.toLocaleString()}</td></tr>`;
       });
-      expensesHtml += `</tbody><tfoot><tr style="background:#000;color:#fff;"><td colspan="4" class="bold">Total Expenses (${expenses.length})</td><td class="text-right bold">PKR ${totalExpensesAmt.toLocaleString()}</td></tr></tfoot></table>`;
+      expensesHtml += `</tbody><tfoot><tr class="section-total" style="background:#c0392b;color:#fff;"><td colspan="3" class="bold">Total Expenses (${expenses.length})</td><td class="text-right bold">Rs ${totalExpensesAmt.toLocaleString()}</td></tr></tfoot></table></div>`;
     }
 
     // Payment method totals
@@ -221,62 +226,74 @@ export default function ReportsPage() {
     const jcTotal = bills.filter(b => b.payment_method === "jazzcash" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
     const epTotal = bills.filter(b => b.payment_method === "easypaisa" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
     const creditTotal = creditBills.reduce((s, b) => s + b.total, 0);
+    const netSales = day.totalSales - day.totalExpenses;
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) { toast.error("Please allow popups"); return; }
-    printWindow.document.write(`<html><head><title>Daily Summary - ${date}</title>
+    printWindow.document.write(`<html><head><title>Summary - ${date}</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; font-size: 12px; color: #000; }
-      h1 { text-align: center; font-size: 18px; margin-bottom: 4px; }
-      .tagline { text-align: center; font-size: 12px; color: #333; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
-      .header-divider { width: 60%; margin: 8px auto; border-top: 2px solid #000; border-bottom: 1px solid #000; padding-top: 2px; }
-      .subtitle { text-align: center; font-size: 11px; color: #555; margin-bottom: 2px; }
-      .subtitle:last-of-type { margin-bottom: 16px; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-      th, td { border: 1px solid #000; padding: 5px 8px; text-align: left; font-size: 11px; }
-      th { font-weight: 700; font-size: 10px; text-transform: uppercase; background: #f0f0f0; }
+      body { font-family: 'Segoe UI', Arial, sans-serif; padding: 24px 28px; font-size: 12px; color: #222; }
+      .header { text-align: center; margin-bottom: 20px; }
+      .header h1 { font-size: 22px; font-weight: 800; letter-spacing: 1px; margin-bottom: 2px; }
+      .header .tagline { font-size: 10px; color: #666; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; }
+      .header .date-line { font-size: 13px; font-weight: 600; color: #333; background: #f4f4f4; display: inline-block; padding: 4px 16px; border-radius: 4px; }
+      .divider { border: none; border-top: 2px solid #222; margin: 16px 0; }
+      .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+      .overview-card { border: 1px solid #ddd; border-radius: 6px; padding: 10px 14px; }
+      .overview-card .label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+      .overview-card .value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+      .overview-card.highlight { background: #222; color: #fff; border-color: #222; }
+      .overview-card.highlight .label { color: #aaa; }
+      .section-block { margin-bottom: 18px; }
+      .section-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; padding: 4px 8px; background: #f8f8f8; border-left: 4px solid #333; border-radius: 2px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 5px 8px; text-align: left; font-size: 11px; border-bottom: 1px solid #e0e0e0; }
+      th { font-weight: 600; font-size: 9px; text-transform: uppercase; color: #888; border-bottom: 2px solid #ccc; }
       .text-right { text-align: right; }
-      .text-center { text-align: center; }
       .bold { font-weight: 700; }
-      .section-title { font-size: 13px; font-weight: 700; margin: 16px 0 8px; border-bottom: 2px solid #000; padding-bottom: 4px; }
-      .grand-total { background: #000; color: #fff; font-size: 13px; }
-      .footer { text-align: center; margin-top: 20px; font-size: 10px; color: #888; border-top: 1px dashed #999; padding-top: 8px; }
-      @media print { body { padding: 0; } }
+      .products-cell { font-size: 10px; color: #555; max-width: 220px; }
+      .section-total td { font-size: 12px; border: none; padding: 6px 8px; }
+      .empty-section { color: #aaa; font-style: italic; font-size: 11px; padding: 6px 0; }
+      .closing-table { margin-top: 10px; }
+      .closing-table td { padding: 6px 10px; border-bottom: 1px solid #eee; }
+      .closing-table .method-icon { font-size: 14px; margin-right: 6px; }
+      .closing-table .grand { background: #222; color: #fff; font-size: 13px; font-weight: 700; border: none; }
+      .footer { text-align: center; margin-top: 24px; font-size: 9px; color: #aaa; border-top: 1px dashed #ccc; padding-top: 8px; }
+      @media print { body { padding: 12px 16px; } }
     </style></head><body>
-      <h1>Qazi Enterprises</h1>
-      <p class="tagline">Wholesale & Retail — Building Materials & General Store</p>
-      <div class="header-divider"></div>
-      <p class="subtitle">📊 Daily Summary Report</p>
-      <p class="subtitle">${dateDisplay} · Generated at ${timeStr}</p>
+      <div class="header">
+        <h1>QAZI ENTERPRISES</h1>
+        <p class="tagline">Building Materials & General Store</p>
+        <span class="date-line">📊 ${dateDisplay}</span>
+      </div>
+      <hr class="divider">
 
-      <p class="section-title">Overview</p>
-      <table>
-        <thead><tr><th>Category</th><th class="text-center">Count</th><th class="text-right">Amount (PKR)</th></tr></thead>
-        <tbody>
-          <tr><td class="bold">Total Sales</td><td class="text-center">${day.salesCount}</td><td class="text-right bold">PKR ${day.totalSales.toLocaleString()}</td></tr>
-          <tr><td class="bold">Total Purchases</td><td class="text-center">${day.purchasesCount}</td><td class="text-right bold">PKR ${day.totalPurchases.toLocaleString()}</td></tr>
-          <tr><td class="bold">Total Expenses</td><td class="text-center">${day.expensesCount}</td><td class="text-right bold">PKR ${day.totalExpenses.toLocaleString()}</td></tr>
-          <tr class="grand-total"><td class="bold" colspan="2">Net Profit / Loss</td><td class="text-right bold">PKR ${day.profit.toLocaleString()}</td></tr>
-        </tbody>
-      </table>
+      <div class="overview-grid">
+        <div class="overview-card"><div class="label">Total Sales (${day.salesCount})</div><div class="value" style="color:#2d7d46">Rs ${day.totalSales.toLocaleString()}</div></div>
+        <div class="overview-card"><div class="label">Expenses (${day.expensesCount})</div><div class="value" style="color:#c0392b">Rs ${day.totalExpenses.toLocaleString()}</div></div>
+        <div class="overview-card highlight"><div class="label">Net Revenue</div><div class="value" style="color:${netSales >= 0 ? '#2ecc71' : '#e74c3c'}">Rs ${netSales.toLocaleString()}</div></div>
+        <div class="overview-card"><div class="label">Credit Outstanding</div><div class="value" style="color:#e67e22">Rs ${creditTotal.toLocaleString()}</div></div>
+      </div>
 
       ${billSectionsHtml}
       ${expensesHtml}
 
-      <p class="section-title">End of Day Closing</p>
-      <table>
-        <tbody>
-          <tr style="background:#fff;"><td class="bold">Cash in Hand</td><td class="text-right bold">PKR ${cashTotal.toLocaleString()}</td></tr>
-          <tr style="background:#e8e8e8;"><td class="bold">Bank Transfer</td><td class="text-right bold">PKR ${bankTotal.toLocaleString()}</td></tr>
-          <tr style="background:#d0d0d0;"><td class="bold">JazzCash</td><td class="text-right bold">PKR ${jcTotal.toLocaleString()}</td></tr>
-          <tr style="background:#ddd;"><td class="bold">EasyPaisa</td><td class="text-right bold">PKR ${epTotal.toLocaleString()}</td></tr>
-          <tr style="background:#b8b8b8;"><td class="bold">Credit Given (Udhar)</td><td class="text-right bold">PKR ${creditTotal.toLocaleString()}</td></tr>
-          <tr class="grand-total"><td class="bold">Total Day Sales</td><td class="text-right bold">PKR ${day.totalSales.toLocaleString()}</td></tr>
-        </tbody>
-      </table>
+      <div class="section-block">
+        <p class="section-title">📋 Day Closing Summary</p>
+        <table class="closing-table">
+          <tbody>
+            ${cashTotal > 0 ? `<tr><td><span class="method-icon">💵</span> Cash in Hand</td><td class="text-right bold">Rs ${cashTotal.toLocaleString()}</td></tr>` : ''}
+            ${bankTotal > 0 ? `<tr><td><span class="method-icon">🏦</span> Bank Transfer</td><td class="text-right bold">Rs ${bankTotal.toLocaleString()}</td></tr>` : ''}
+            ${jcTotal > 0 ? `<tr><td><span class="method-icon">📱</span> JazzCash</td><td class="text-right bold">Rs ${jcTotal.toLocaleString()}</td></tr>` : ''}
+            ${epTotal > 0 ? `<tr><td><span class="method-icon">📲</span> EasyPaisa</td><td class="text-right bold">Rs ${epTotal.toLocaleString()}</td></tr>` : ''}
+            ${creditTotal > 0 ? `<tr><td><span class="method-icon">📋</span> Credit / Udhar</td><td class="text-right bold" style="color:#e67e22">Rs ${creditTotal.toLocaleString()}</td></tr>` : ''}
+            <tr class="grand"><td>Total Day Sales</td><td class="text-right">Rs ${day.totalSales.toLocaleString()}</td></tr>
+          </tbody>
+        </table>
+      </div>
 
-      <div class="footer"><p>Qazi Enterprises — Panighar · All Rights Reserved</p></div>
+      <div class="footer">Qazi Enterprises — Panighar · Generated at ${timeStr}</div>
       <script>window.onload = function() { window.print(); window.close(); }<\/script>
     </body></html>`);
     printWindow.document.close();
