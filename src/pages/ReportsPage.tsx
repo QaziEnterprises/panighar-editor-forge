@@ -165,17 +165,53 @@ export default function ReportsPage() {
       reference_no: e.reference_no,
     }));
 
-    // Build bill table HTML - clean & attractive
-    const buildBillTable = (billList: typeof bills, accentColor: string) => {
+    // Parse split payment methods like "cash:2000, bank:36000"
+    const parsePaymentBreakdown = (pm: string | null): Record<string, number> => {
+      if (!pm) return { cash: 0 };
+      const result: Record<string, number> = {};
+      if (pm.includes(":") && pm.includes(",")) {
+        // Split payment: "cash:2000, bank:36000"
+        pm.split(",").forEach(part => {
+          const [method, amount] = part.trim().split(":");
+          if (method && amount) result[method.trim().toLowerCase()] = Number(amount.trim()) || 0;
+        });
+      } else if (pm.includes(":") && !pm.includes(",")) {
+        // Single with amount: "cash:5000"
+        const [method, amount] = pm.split(":");
+        result[method.trim().toLowerCase()] = Number(amount.trim()) || 0;
+      } else {
+        // Simple: "cash"
+        result[pm.trim().toLowerCase()] = 0; // will use bill total
+      }
+      return result;
+    };
+
+    // Add parsed breakdown to each bill
+    const billsWithBreakdown = bills.map(b => {
+      const breakdown = parsePaymentBreakdown(b.payment_method);
+      // If simple method (no amounts in breakdown), set amount to paid_amount or total
+      const hasAmounts = Object.values(breakdown).some(v => v > 0);
+      if (!hasAmounts && Object.keys(breakdown).length === 1) {
+        const method = Object.keys(breakdown)[0];
+        breakdown[method] = b.paid_amount || b.total;
+      }
+      return { ...b, breakdown };
+    });
+
+    // Build bill table HTML - clean & attractive, now shows payment breakdown per bill
+    const buildBillTable = (billList: typeof billsWithBreakdown, accentColor: string, methodKey?: string) => {
       if (billList.length === 0) return `<div class="empty-section">No bills in this category</div>`;
-      const sectionTotal = billList.reduce((s, b) => s + b.total, 0);
-      const sectionPaid = billList.reduce((s, b) => s + b.paid_amount, 0);
-      const sectionDue = sectionTotal - sectionPaid;
-      let html = `<table><thead><tr><th style="width:30px">#</th><th>Customer</th><th>Products</th><th style="width:80px" class="text-right">Bill</th><th style="width:80px" class="text-right">Paid</th><th style="width:80px" class="text-right">Due</th></tr></thead><tbody>`;
+      let html = `<table><thead><tr><th style="width:30px">#</th><th>Customer</th><th>Products</th><th style="width:80px" class="text-right">Bill</th><th style="width:100px" class="text-right">Payment Detail</th><th style="width:80px" class="text-right">Due</th></tr></thead><tbody>`;
       billList.forEach((b, i) => {
         const products = b.items.map(it => `${it.product_name || "Item"} ×${it.quantity}`).join(" · ") || "—";
         const due = b.total - b.paid_amount;
-        html += `<tr><td>${i + 1}</td><td class="bold">${b.customer_name}</td><td class="products-cell">${products}</td><td class="text-right">Rs ${b.total.toLocaleString()}</td><td class="text-right" style="color:#2d7d46">Rs ${b.paid_amount.toLocaleString()}</td><td class="text-right" style="color:${due > 0 ? '#c0392b' : '#888'}">${due > 0 ? 'Rs ' + due.toLocaleString() : '—'}</td></tr>`;
+        // Show full payment breakdown
+        const breakdownParts = Object.entries(b.breakdown)
+          .filter(([_, amt]) => amt > 0)
+          .map(([m, amt]) => `<span style="text-transform:capitalize;font-size:10px">${m}: Rs ${amt.toLocaleString()}</span>`)
+          .join("<br>");
+        const payDetail = breakdownParts || `<span style="font-size:10px">Rs ${b.paid_amount.toLocaleString()}</span>`;
+        html += `<tr><td>${i + 1}</td><td class="bold">${b.customer_name}</td><td class="products-cell">${products}</td><td class="text-right">Rs ${b.total.toLocaleString()}</td><td class="text-right" style="color:#2d7d46">${payDetail}</td><td class="text-right" style="color:${due > 0 ? '#c0392b' : '#888'}">${due > 0 ? 'Rs ' + due.toLocaleString() : '—'}</td></tr>`;
       });
       html += `</tbody></table>`;
       return html;
@@ -188,17 +224,22 @@ export default function ReportsPage() {
       { key: "easypaisa", label: "📲 EasyPaisa", accent: "#27ae60" },
     ];
 
+    // A bill belongs to a method section if it has that method in its breakdown OR is the sole method
     let billSectionsHtml = "";
     for (const pm of paymentMethods) {
-      const filtered = bills.filter(b => b.payment_method === pm.key && b.payment_status === "paid");
+      const filtered = billsWithBreakdown.filter(b => {
+        if (b.payment_status !== "paid") return false;
+        return pm.key in b.breakdown;
+      });
       if (filtered.length > 0) {
-        billSectionsHtml += `<div class="section-block"><p class="section-title">${pm.label}</p>`;
-        billSectionsHtml += buildBillTable(filtered, pm.accent);
+        const methodTotal = filtered.reduce((s, b) => s + (b.breakdown[pm.key] || 0), 0);
+        billSectionsHtml += `<div class="section-block"><p class="section-title">${pm.label} <span style="float:right;font-size:11px;color:#555">Received: Rs ${methodTotal.toLocaleString()}</span></p>`;
+        billSectionsHtml += buildBillTable(filtered, pm.accent, pm.key);
         billSectionsHtml += `</div>`;
       }
     }
 
-    const creditBills = bills.filter(b => b.payment_status === "due" || b.payment_status === "partial");
+    const creditBills = billsWithBreakdown.filter(b => b.payment_status === "due" || b.payment_status === "partial");
     if (creditBills.length > 0) {
       billSectionsHtml += `<div class="section-block"><p class="section-title">📋 Credit / Udhar</p>`;
       billSectionsHtml += buildBillTable(creditBills, "#e67e22");
@@ -206,12 +247,36 @@ export default function ReportsPage() {
     }
 
     const knownMethods = new Set(["cash", "bank", "jazzcash", "easypaisa"]);
-    const otherBills = bills.filter(b => b.payment_status === "paid" && !knownMethods.has(b.payment_method || ""));
+    const otherBills = billsWithBreakdown.filter(b => {
+      if (b.payment_status !== "paid") return false;
+      return !Object.keys(b.breakdown).some(m => knownMethods.has(m));
+    });
     if (otherBills.length > 0) {
       billSectionsHtml += `<div class="section-block"><p class="section-title">🔖 Other</p>`;
       billSectionsHtml += buildBillTable(otherBills, "#7f8c8d");
       billSectionsHtml += `</div>`;
     }
+
+    // Calculate accurate totals from breakdowns
+    const cashTotal = billsWithBreakdown.filter(b => b.payment_status === "paid").reduce((s, b) => s + (b.breakdown["cash"] || 0), 0);
+    const bankTotal = billsWithBreakdown.filter(b => b.payment_status === "paid").reduce((s, b) => s + (b.breakdown["bank"] || 0), 0);
+    const jcTotal = billsWithBreakdown.filter(b => b.payment_status === "paid").reduce((s, b) => s + (b.breakdown["jazzcash"] || 0), 0);
+    const epTotal = billsWithBreakdown.filter(b => b.payment_status === "paid").reduce((s, b) => s + (b.breakdown["easypaisa"] || 0), 0);
+    const creditTotal = creditBills.reduce((s, b) => s + b.total, 0);
+    const totalBilled = bills.reduce((s, b) => s + b.total, 0);
+    const totalReceived = cashTotal + bankTotal + jcTotal + epTotal;
+    const creditPaid = creditBills.reduce((s, b) => s + b.paid_amount, 0);
+    // Add credit partial payments broken down
+    const creditCash = creditBills.reduce((s, b) => s + (b.breakdown["cash"] || 0), 0);
+    const creditBank = creditBills.reduce((s, b) => s + (b.breakdown["bank"] || 0), 0);
+    const creditJc = creditBills.reduce((s, b) => s + (b.breakdown["jazzcash"] || 0), 0);
+    const creditEp = creditBills.reduce((s, b) => s + (b.breakdown["easypaisa"] || 0), 0);
+    const grandCash = cashTotal + creditCash;
+    const grandBank = bankTotal + creditBank;
+    const grandJc = jcTotal + creditJc;
+    const grandEp = epTotal + creditEp;
+    const grandReceived = grandCash + grandBank + grandJc + grandEp;
+    const totalDue = totalBilled - grandReceived;
 
     // Expenses section
     const totalExpensesAmt = expenses.reduce((s, e) => s + e.amount, 0);
@@ -223,17 +288,6 @@ export default function ReportsPage() {
       });
       expensesHtml += `</tbody><tfoot><tr class="section-total" style="background:#c0392b;color:#fff;"><td colspan="3" class="bold">Total Expenses (${expenses.length})</td><td class="text-right bold">Rs ${totalExpensesAmt.toLocaleString()}</td></tr></tfoot></table></div>`;
     }
-
-    // Payment method totals
-    const cashTotal = bills.filter(b => b.payment_method === "cash" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
-    const bankTotal = bills.filter(b => b.payment_method === "bank" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
-    const jcTotal = bills.filter(b => b.payment_method === "jazzcash" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
-    const epTotal = bills.filter(b => b.payment_method === "easypaisa" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
-    const creditTotal = creditBills.reduce((s, b) => s + b.total, 0);
-    const totalBilled = bills.reduce((s, b) => s + b.total, 0);
-    const totalReceived = cashTotal + bankTotal + jcTotal + epTotal;
-    const totalDue = totalBilled - totalReceived;
-    const netSales = day.totalSales - day.totalExpenses;
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) { toast.error("Please allow popups"); return; }
@@ -278,10 +332,10 @@ export default function ReportsPage() {
 
       <div class="overview-grid">
         <div class="overview-card"><div class="label">Total Billed (${day.salesCount} bills)</div><div class="value" style="color:#222">Rs ${totalBilled.toLocaleString()}</div></div>
-        <div class="overview-card"><div class="label">Total Received</div><div class="value" style="color:#2d7d46">Rs ${totalReceived.toLocaleString()}</div></div>
+        <div class="overview-card"><div class="label">Total Received</div><div class="value" style="color:#2d7d46">Rs ${grandReceived.toLocaleString()}</div></div>
         <div class="overview-card"><div class="label">Outstanding / Due</div><div class="value" style="color:#e67e22">Rs ${totalDue.toLocaleString()}</div></div>
         <div class="overview-card"><div class="label">Expenses (${day.expensesCount})</div><div class="value" style="color:#c0392b">Rs ${day.totalExpenses.toLocaleString()}</div></div>
-        <div class="overview-card highlight" style="grid-column:span 2"><div class="label">Net Revenue (Received − Expenses)</div><div class="value" style="color:${(totalReceived - day.totalExpenses) >= 0 ? '#2ecc71' : '#e74c3c'}">Rs ${(totalReceived - day.totalExpenses).toLocaleString()}</div></div>
+        <div class="overview-card highlight" style="grid-column:span 2"><div class="label">Net Revenue (Received − Expenses)</div><div class="value" style="color:${(grandReceived - day.totalExpenses) >= 0 ? '#2ecc71' : '#e74c3c'}">Rs ${(grandReceived - day.totalExpenses).toLocaleString()}</div></div>
       </div>
 
       ${billSectionsHtml}
@@ -292,11 +346,11 @@ export default function ReportsPage() {
         <table class="closing-table">
           <thead><tr><th>Payment Method</th><th class="text-right">Amount Received</th></tr></thead>
           <tbody>
-            ${cashTotal > 0 ? `<tr><td><span class="method-icon">💵</span> Cash</td><td class="text-right bold">Rs ${cashTotal.toLocaleString()}</td></tr>` : ''}
-            ${bankTotal > 0 ? `<tr><td><span class="method-icon">🏦</span> Bank Transfer</td><td class="text-right bold">Rs ${bankTotal.toLocaleString()}</td></tr>` : ''}
-            ${jcTotal > 0 ? `<tr><td><span class="method-icon">📱</span> JazzCash</td><td class="text-right bold">Rs ${jcTotal.toLocaleString()}</td></tr>` : ''}
-            ${epTotal > 0 ? `<tr><td><span class="method-icon">📲</span> EasyPaisa</td><td class="text-right bold">Rs ${epTotal.toLocaleString()}</td></tr>` : ''}
-            <tr class="grand"><td>Total Received</td><td class="text-right">Rs ${totalReceived.toLocaleString()}</td></tr>
+            ${grandCash > 0 ? `<tr><td><span class="method-icon">💵</span> Cash</td><td class="text-right bold">Rs ${grandCash.toLocaleString()}</td></tr>` : ''}
+            ${grandBank > 0 ? `<tr><td><span class="method-icon">🏦</span> Bank Transfer</td><td class="text-right bold">Rs ${grandBank.toLocaleString()}</td></tr>` : ''}
+            ${grandJc > 0 ? `<tr><td><span class="method-icon">📱</span> JazzCash</td><td class="text-right bold">Rs ${grandJc.toLocaleString()}</td></tr>` : ''}
+            ${grandEp > 0 ? `<tr><td><span class="method-icon">📲</span> EasyPaisa</td><td class="text-right bold">Rs ${grandEp.toLocaleString()}</td></tr>` : ''}
+            <tr class="grand"><td>Total Received</td><td class="text-right">Rs ${grandReceived.toLocaleString()}</td></tr>
             ${totalDue > 0 ? `<tr style="background:#fff3e0;"><td class="bold" style="color:#e67e22">⏳ Remaining Due / Udhar</td><td class="text-right bold" style="color:#e67e22">Rs ${totalDue.toLocaleString()}</td></tr>` : ''}
             <tr style="background:#333;color:#fff;font-size:13px;font-weight:700;"><td>Total Billed</td><td class="text-right">Rs ${totalBilled.toLocaleString()}</td></tr>
           </tbody>
