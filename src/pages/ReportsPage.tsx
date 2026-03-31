@@ -177,7 +177,7 @@ export default function ReportsPage() {
         const due = b.total - b.paid_amount;
         html += `<tr><td>${i + 1}</td><td class="bold">${b.customer_name}</td><td class="products-cell">${products}</td><td class="text-right">Rs ${b.total.toLocaleString()}</td><td class="text-right" style="color:#2d7d46">Rs ${b.paid_amount.toLocaleString()}</td><td class="text-right" style="color:${due > 0 ? '#c0392b' : '#888'}">${due > 0 ? 'Rs ' + due.toLocaleString() : '—'}</td></tr>`;
       });
-      html += `</tbody><tfoot><tr class="section-total" style="background:${accentColor};color:#fff;"><td colspan="3" class="bold">Total — ${billList.length} bill${billList.length > 1 ? 's' : ''}</td><td class="text-right bold">Rs ${sectionTotal.toLocaleString()}</td><td class="text-right bold">Rs ${sectionPaid.toLocaleString()}</td><td class="text-right bold">${sectionDue > 0 ? 'Rs ' + sectionDue.toLocaleString() : '—'}</td></tr></tfoot></table>`;
+      html += `</tbody></table>`;
       return html;
     };
 
