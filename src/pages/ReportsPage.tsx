@@ -230,6 +230,9 @@ export default function ReportsPage() {
     const jcTotal = bills.filter(b => b.payment_method === "jazzcash" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
     const epTotal = bills.filter(b => b.payment_method === "easypaisa" && b.payment_status === "paid").reduce((s, b) => s + b.total, 0);
     const creditTotal = creditBills.reduce((s, b) => s + b.total, 0);
+    const totalBilled = bills.reduce((s, b) => s + b.total, 0);
+    const totalReceived = cashTotal + bankTotal + jcTotal + epTotal;
+    const totalDue = totalBilled - totalReceived;
     const netSales = day.totalSales - day.totalExpenses;
 
     const printWindow = window.open("", "_blank");
