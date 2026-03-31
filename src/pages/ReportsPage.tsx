@@ -288,15 +288,17 @@ export default function ReportsPage() {
       ${expensesHtml}
 
       <div class="section-block">
-        <p class="section-title">📋 Day Closing Summary</p>
+        <p class="section-title">📋 Payment Collection Summary</p>
         <table class="closing-table">
+          <thead><tr><th>Payment Method</th><th class="text-right">Amount Received</th></tr></thead>
           <tbody>
-            ${cashTotal > 0 ? `<tr><td><span class="method-icon">💵</span> Cash in Hand</td><td class="text-right bold">Rs ${cashTotal.toLocaleString()}</td></tr>` : ''}
+            ${cashTotal > 0 ? `<tr><td><span class="method-icon">💵</span> Cash</td><td class="text-right bold">Rs ${cashTotal.toLocaleString()}</td></tr>` : ''}
             ${bankTotal > 0 ? `<tr><td><span class="method-icon">🏦</span> Bank Transfer</td><td class="text-right bold">Rs ${bankTotal.toLocaleString()}</td></tr>` : ''}
             ${jcTotal > 0 ? `<tr><td><span class="method-icon">📱</span> JazzCash</td><td class="text-right bold">Rs ${jcTotal.toLocaleString()}</td></tr>` : ''}
             ${epTotal > 0 ? `<tr><td><span class="method-icon">📲</span> EasyPaisa</td><td class="text-right bold">Rs ${epTotal.toLocaleString()}</td></tr>` : ''}
-            ${creditTotal > 0 ? `<tr><td><span class="method-icon">📋</span> Credit / Udhar</td><td class="text-right bold" style="color:#e67e22">Rs ${creditTotal.toLocaleString()}</td></tr>` : ''}
-            <tr class="grand"><td>Total Day Sales</td><td class="text-right">Rs ${day.totalSales.toLocaleString()}</td></tr>
+            <tr class="grand"><td>Total Received</td><td class="text-right">Rs ${totalReceived.toLocaleString()}</td></tr>
+            ${totalDue > 0 ? `<tr style="background:#fff3e0;"><td class="bold" style="color:#e67e22">⏳ Remaining Due / Udhar</td><td class="text-right bold" style="color:#e67e22">Rs ${totalDue.toLocaleString()}</td></tr>` : ''}
+            <tr style="background:#333;color:#fff;font-size:13px;font-weight:700;"><td>Total Billed</td><td class="text-right">Rs ${totalBilled.toLocaleString()}</td></tr>
           </tbody>
         </table>
       </div>
