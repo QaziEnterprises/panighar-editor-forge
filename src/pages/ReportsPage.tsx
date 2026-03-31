@@ -129,7 +129,7 @@ export default function ReportsPage() {
 
     // Fetch full data: sales with items, contacts, expenses
     const [{ data: salesRaw }, { data: contacts }, { data: saleItems }, { data: expensesRaw }] = await Promise.all([
-      supabase.from("sale_transactions").select("id, invoice_no, total, payment_method, payment_status, customer_id, date").eq("date", date),
+      supabase.from("sale_transactions").select("id, invoice_no, total, paid_amount, payment_method, payment_status, customer_id, date").eq("date", date),
       supabase.from("contacts").select("id, name"),
       supabase.from("sale_items").select("sale_id, product_name, quantity, unit_price, subtotal"),
       supabase.from("expenses").select("id, amount, description, payment_method, reference_no").eq("date", date),
@@ -146,6 +146,7 @@ export default function ReportsPage() {
       id: s.id,
       invoice_no: s.invoice_no,
       total: Number(s.total || 0),
+      paid_amount: Number(s.paid_amount || 0),
       payment_method: s.payment_method,
       payment_status: s.payment_status,
       customer_name: s.customer_id ? (contactMap.get(s.customer_id) || "Unknown") : "Walk-in",
