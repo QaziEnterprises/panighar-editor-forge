@@ -277,10 +277,11 @@ export default function ReportsPage() {
       <hr class="divider">
 
       <div class="overview-grid">
-        <div class="overview-card"><div class="label">Total Sales (${day.salesCount})</div><div class="value" style="color:#2d7d46">Rs ${day.totalSales.toLocaleString()}</div></div>
+        <div class="overview-card"><div class="label">Total Billed (${day.salesCount} bills)</div><div class="value" style="color:#222">Rs ${totalBilled.toLocaleString()}</div></div>
+        <div class="overview-card"><div class="label">Total Received</div><div class="value" style="color:#2d7d46">Rs ${totalReceived.toLocaleString()}</div></div>
+        <div class="overview-card"><div class="label">Outstanding / Due</div><div class="value" style="color:#e67e22">Rs ${totalDue.toLocaleString()}</div></div>
         <div class="overview-card"><div class="label">Expenses (${day.expensesCount})</div><div class="value" style="color:#c0392b">Rs ${day.totalExpenses.toLocaleString()}</div></div>
-        <div class="overview-card highlight"><div class="label">Net Revenue</div><div class="value" style="color:${netSales >= 0 ? '#2ecc71' : '#e74c3c'}">Rs ${netSales.toLocaleString()}</div></div>
-        <div class="overview-card"><div class="label">Credit Outstanding</div><div class="value" style="color:#e67e22">Rs ${creditTotal.toLocaleString()}</div></div>
+        <div class="overview-card highlight" style="grid-column:span 2"><div class="label">Net Revenue (Received − Expenses)</div><div class="value" style="color:${(totalReceived - day.totalExpenses) >= 0 ? '#2ecc71' : '#e74c3c'}">Rs ${(totalReceived - day.totalExpenses).toLocaleString()}</div></div>
       </div>
 
       ${billSectionsHtml}
