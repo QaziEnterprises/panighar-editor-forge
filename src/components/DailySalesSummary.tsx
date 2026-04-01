@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Banknote, CreditCard, Clock, TrendingUp, RefreshCw, Printer, Trash2 } from "lucide-react";
+import { Banknote, CreditCard, Clock, TrendingUp, RefreshCw, Printer, Trash2, Pencil, Check, X, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/customClient";
 import { retryQuery } from "@/lib/retryFetch";
 import { toast } from "sonner";
