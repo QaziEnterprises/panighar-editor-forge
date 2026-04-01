@@ -67,15 +67,24 @@ export default function DailySalesSummary() {
     setLoading(true);
     try {
       const todayStr = getTodayStr();
-      const [{ data: sales }, { data: purchases }, { data: expenses }] = await Promise.all([
+      const [{ data: sales }, { data: purchases }, { data: expensesData }] = await Promise.all([
         retryQuery(() => supabase.from("sale_transactions").select("total, payment_method, payment_status").eq("date", todayStr)),
         retryQuery(() => supabase.from("purchases").select("total").eq("date", todayStr)),
-        retryQuery(() => supabase.from("expenses").select("amount").eq("date", todayStr)),
+        retryQuery(() => supabase.from("expenses").select("id, amount, description, payment_method, reference_no").eq("date", todayStr)),
       ]);
 
       const allSales = (sales as any[]) || [];
       const allPurchases = (purchases as any[]) || [];
-      const allExpenses = (expenses as any[]) || [];
+      const allExpenses = (expensesData as any[]) || [];
+
+      // Store full expenses list
+      setExpensesList(allExpenses.map((e: any) => ({
+        id: e.id,
+        amount: Number(e.amount || 0),
+        description: e.description,
+        payment_method: e.payment_method,
+        reference_no: e.reference_no,
+      })));
 
       const totalSales = allSales.reduce((s: number, r: any) => s + Number(r.total || 0), 0);
       const totalPurchases = allPurchases.reduce((s: number, r: any) => s + Number(r.total || 0), 0);
@@ -111,6 +120,30 @@ export default function DailySalesSummary() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditExpense = (exp: ExpenseRow) => {
+    setEditingExpenseId(exp.id);
+    setEditExpenseAmt(exp.amount.toString());
+    setEditExpenseDesc(exp.description || "");
+  };
+
+  const handleSaveExpense = async (id: string) => {
+    const amt = parseFloat(editExpenseAmt);
+    if (isNaN(amt) || amt < 0) { toast.error("Invalid amount"); return; }
+    const { error } = await supabase.from("expenses").update({ amount: amt, description: editExpenseDesc || null }).eq("id", id);
+    if (error) { toast.error("Failed to update"); return; }
+    toast.success("Expense updated");
+    setEditingExpenseId(null);
+    fetchSummary();
+  };
+
+  const handleDeleteExpense = async (id: string, amount: number) => {
+    if (!confirm(`Delete this expense (PKR ${amount.toLocaleString()})?`)) return;
+    const { error } = await supabase.from("expenses").delete().eq("id", id);
+    if (error) { toast.error("Failed to delete"); return; }
+    toast.success("Expense deleted");
+    fetchSummary();
   };
 
   useEffect(() => {
