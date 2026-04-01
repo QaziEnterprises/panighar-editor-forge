@@ -71,9 +71,11 @@ export default function ExpensesPage() {
     });
   };
 
-  const filtered = getDateFilteredExpenses().filter((e) =>
-    e.description?.toLowerCase().includes(search.toLowerCase()) || e.reference_no?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = getDateFilteredExpenses().filter((e) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (e.description || "").toLowerCase().includes(q) || (e.reference_no || "").toLowerCase().includes(q);
+  });
 
   const totalExpenses = filtered.reduce((s, e) => s + Number(e.amount), 0);
 
