@@ -56,6 +56,10 @@ export default function DailySalesSummary() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [deletingDuplicates, setDeletingDuplicates] = useState(false);
+  const [expensesList, setExpensesList] = useState<ExpenseRow[]>([]);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [editExpenseAmt, setEditExpenseAmt] = useState("");
+  const [editExpenseDesc, setEditExpenseDesc] = useState("");
 
   const getTodayStr = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
 
