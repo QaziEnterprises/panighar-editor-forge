@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Banknote, CreditCard, Clock, TrendingUp, RefreshCw, Printer, Trash2 } from "lucide-react";
+import { Banknote, CreditCard, Clock, TrendingUp, RefreshCw, Printer, Trash2, Pencil, Check, X, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/customClient";
 import { retryQuery } from "@/lib/retryFetch";
 import { toast } from "sonner";
@@ -55,6 +56,10 @@ export default function DailySalesSummary() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [deletingDuplicates, setDeletingDuplicates] = useState(false);
+  const [expensesList, setExpensesList] = useState<ExpenseRow[]>([]);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [editExpenseAmt, setEditExpenseAmt] = useState("");
+  const [editExpenseDesc, setEditExpenseDesc] = useState("");
 
   const getTodayStr = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
 
@@ -62,15 +67,24 @@ export default function DailySalesSummary() {
     setLoading(true);
     try {
       const todayStr = getTodayStr();
-      const [{ data: sales }, { data: purchases }, { data: expenses }] = await Promise.all([
+      const [{ data: sales }, { data: purchases }, { data: expensesData }] = await Promise.all([
         retryQuery(() => supabase.from("sale_transactions").select("total, payment_method, payment_status").eq("date", todayStr)),
         retryQuery(() => supabase.from("purchases").select("total").eq("date", todayStr)),
-        retryQuery(() => supabase.from("expenses").select("amount").eq("date", todayStr)),
+        retryQuery(() => supabase.from("expenses").select("id, amount, description, payment_method, reference_no").eq("date", todayStr)),
       ]);
 
       const allSales = (sales as any[]) || [];
       const allPurchases = (purchases as any[]) || [];
-      const allExpenses = (expenses as any[]) || [];
+      const allExpenses = (expensesData as any[]) || [];
+
+      // Store full expenses list
+      setExpensesList(allExpenses.map((e: any) => ({
+        id: e.id,
+        amount: Number(e.amount || 0),
+        description: e.description,
+        payment_method: e.payment_method,
+        reference_no: e.reference_no,
+      })));
 
       const totalSales = allSales.reduce((s: number, r: any) => s + Number(r.total || 0), 0);
       const totalPurchases = allPurchases.reduce((s: number, r: any) => s + Number(r.total || 0), 0);
@@ -106,6 +120,30 @@ export default function DailySalesSummary() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditExpense = (exp: ExpenseRow) => {
+    setEditingExpenseId(exp.id);
+    setEditExpenseAmt(exp.amount.toString());
+    setEditExpenseDesc(exp.description || "");
+  };
+
+  const handleSaveExpense = async (id: string) => {
+    const amt = parseFloat(editExpenseAmt);
+    if (isNaN(amt) || amt < 0) { toast.error("Invalid amount"); return; }
+    const { error } = await supabase.from("expenses").update({ amount: amt, description: editExpenseDesc || null }).eq("id", id);
+    if (error) { toast.error("Failed to update"); return; }
+    toast.success("Expense updated");
+    setEditingExpenseId(null);
+    fetchSummary();
+  };
+
+  const handleDeleteExpense = async (id: string, amount: number) => {
+    if (!confirm(`Delete this expense (PKR ${amount.toLocaleString()})?`)) return;
+    const { error } = await supabase.from("expenses").delete().eq("id", id);
+    if (error) { toast.error("Failed to delete"); return; }
+    toast.success("Expense deleted");
+    fetchSummary();
   };
 
   useEffect(() => {
@@ -434,6 +472,15 @@ export default function DailySalesSummary() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Net Cash Received (Cash - Expenses) */}
+        <div className="text-center p-3 rounded-lg bg-accent/10 border-2 border-accent/30">
+          <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wider">💰 Net Cash in Hand</p>
+          <p className={`text-3xl font-bold ${(summary.cashSales - summary.totalExpenses) >= 0 ? "text-primary" : "text-destructive"}`}>
+            PKR {(summary.cashSales - summary.totalExpenses).toLocaleString()}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-1">Cash Received (PKR {summary.cashSales.toLocaleString()}) − Expenses (PKR {summary.totalExpenses.toLocaleString()})</p>
+        </div>
+
         {/* Total */}
         <div className="text-center p-3 rounded-lg bg-primary/5 border">
           <p className="text-xs text-muted-foreground mb-1">Today's Total Sales</p>
@@ -513,7 +560,48 @@ export default function DailySalesSummary() {
 
         <Separator />
 
-        {/* End of Day Summary */}
+        {/* Today's Expenses with Edit/Delete */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">💰 Today's Expenses ({expensesList.length})</p>
+          {expensesList.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic">No expenses today</p>
+          ) : (
+            <div className="space-y-1.5">
+              {expensesList.map((exp) => (
+                <div key={exp.id} className="flex items-center justify-between rounded-lg border p-2 gap-2 text-xs">
+                  {editingExpenseId === exp.id ? (
+                    <>
+                      <div className="flex-1 flex gap-1">
+                        <Input value={editExpenseDesc} onChange={(e) => setEditExpenseDesc(e.target.value)} className="h-7 text-xs" placeholder="Description" />
+                        <Input type="number" value={editExpenseAmt} onChange={(e) => setEditExpenseAmt(e.target.value)} className="h-7 text-xs w-24" />
+                      </div>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleSaveExpense(exp.id)}><Check className="h-3 w-3" /></Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingExpenseId(null)}><X className="h-3 w-3" /></Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate font-medium">{exp.description || "No description"}</p>
+                        {exp.payment_method && <p className="text-muted-foreground capitalize">{exp.payment_method}</p>}
+                      </div>
+                      <span className="font-bold whitespace-nowrap">PKR {exp.amount.toLocaleString()}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleEditExpense(exp)}><Pencil className="h-3 w-3" /></Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteExpense(exp.id, exp.amount)}><Trash2 className="h-3 w-3" /></Button>
+                    </>
+                  )}
+                </div>
+              ))}
+              <div className="flex justify-between p-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                <span className="text-xs font-semibold">Total Expenses</span>
+                <span className="text-xs font-bold text-destructive">PKR {summary.totalExpenses.toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+
         <div className="rounded-lg border-2 border-dashed p-3 space-y-1">
           <p className="text-xs font-semibold flex items-center gap-1">
             <Clock className="h-3 w-3" /> End of Day Closing

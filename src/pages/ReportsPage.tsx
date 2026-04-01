@@ -339,6 +339,7 @@ export default function ReportsPage() {
       <hr class="divider">
 
       <div class="overview-grid">
+        <div class="overview-card highlight" style="grid-column:span 2;background:#1a5276;border-color:#1a5276"><div class="label">💰 Net Cash in Hand (Cash − Expenses)</div><div class="value" style="color:${(grandCash - totalExpensesAmt) >= 0 ? '#2ecc71' : '#e74c3c'}">Rs ${(grandCash - totalExpensesAmt).toLocaleString()}</div></div>
         <div class="overview-card"><div class="label">Total Billed (${day.salesCount} bills)</div><div class="value" style="color:#222">Rs ${totalBilled.toLocaleString()}</div></div>
         <div class="overview-card"><div class="label">Total Received</div><div class="value" style="color:#2d7d46">Rs ${grandReceived.toLocaleString()}</div></div>
         <div class="overview-card"><div class="label">Outstanding / Due</div><div class="value" style="color:#e67e22">Rs ${totalDue.toLocaleString()}</div></div>
