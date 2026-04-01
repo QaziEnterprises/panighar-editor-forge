@@ -472,6 +472,15 @@ export default function DailySalesSummary() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Net Cash Received (Cash - Expenses) */}
+        <div className="text-center p-3 rounded-lg bg-accent/10 border-2 border-accent/30">
+          <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wider">💰 Net Cash in Hand</p>
+          <p className={`text-3xl font-bold ${(summary.cashSales - summary.totalExpenses) >= 0 ? "text-primary" : "text-destructive"}`}>
+            PKR {(summary.cashSales - summary.totalExpenses).toLocaleString()}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-1">Cash Received (PKR {summary.cashSales.toLocaleString()}) − Expenses (PKR {summary.totalExpenses.toLocaleString()})</p>
+        </div>
+
         {/* Total */}
         <div className="text-center p-3 rounded-lg bg-primary/5 border">
           <p className="text-xs text-muted-foreground mb-1">Today's Total Sales</p>
