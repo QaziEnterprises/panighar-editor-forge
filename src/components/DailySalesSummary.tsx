@@ -560,7 +560,48 @@ export default function DailySalesSummary() {
 
         <Separator />
 
-        {/* End of Day Summary */}
+        {/* Today's Expenses with Edit/Delete */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">💰 Today's Expenses ({expensesList.length})</p>
+          {expensesList.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic">No expenses today</p>
+          ) : (
+            <div className="space-y-1.5">
+              {expensesList.map((exp) => (
+                <div key={exp.id} className="flex items-center justify-between rounded-lg border p-2 gap-2 text-xs">
+                  {editingExpenseId === exp.id ? (
+                    <>
+                      <div className="flex-1 flex gap-1">
+                        <Input value={editExpenseDesc} onChange={(e) => setEditExpenseDesc(e.target.value)} className="h-7 text-xs" placeholder="Description" />
+                        <Input type="number" value={editExpenseAmt} onChange={(e) => setEditExpenseAmt(e.target.value)} className="h-7 text-xs w-24" />
+                      </div>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleSaveExpense(exp.id)}><Check className="h-3 w-3" /></Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingExpenseId(null)}><X className="h-3 w-3" /></Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate font-medium">{exp.description || "No description"}</p>
+                        {exp.payment_method && <p className="text-muted-foreground capitalize">{exp.payment_method}</p>}
+                      </div>
+                      <span className="font-bold whitespace-nowrap">PKR {exp.amount.toLocaleString()}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleEditExpense(exp)}><Pencil className="h-3 w-3" /></Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteExpense(exp.id, exp.amount)}><Trash2 className="h-3 w-3" /></Button>
+                    </>
+                  )}
+                </div>
+              ))}
+              <div className="flex justify-between p-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                <span className="text-xs font-semibold">Total Expenses</span>
+                <span className="text-xs font-bold text-destructive">PKR {summary.totalExpenses.toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+
         <div className="rounded-lg border-2 border-dashed p-3 space-y-1">
           <p className="text-xs font-semibold flex items-center gap-1">
             <Clock className="h-3 w-3" /> End of Day Closing
