@@ -689,7 +689,7 @@ export default function BillsPage() {
           saleId={returnSale.id}
           invoiceNo={returnSale.invoice_no}
           saleItems={returnItems}
-          onReturnComplete={() => { fetchBills(); setReturnSale(null); }}
+          onReturnComplete={() => { refreshSales(); setReturnSale(null); }}
         />
       )}
     </div>
