@@ -1,17 +1,20 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, Users, Shield, LogOut, UserCircle, ShoppingCart, Receipt, CreditCard, Menu, X, Boxes, BarChart3, FileText, CalendarDays, BookOpen, ClipboardList, Cloud, Settings } from "lucide-react";
+import { LayoutDashboard, Package, Users, Shield, LogOut, UserCircle, ShoppingCart, Receipt, CreditCard, Menu, X, Boxes, BarChart3, FileText, CalendarDays, BookOpen, ClipboardList, Cloud, Settings, Wifi, WifiOff, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
-
+import NotificationsCenter from "@/components/NotificationsCenter";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { Badge } from "@/components/ui/badge";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { user, role, signOut } = useAuth();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { isOnline, queueLength, syncing, syncQueue } = useOfflineSync();
 
   const allNavItems = [
     { to: "/", icon: LayoutDashboard, label: "Dashboard", adminOnly: false },
@@ -88,12 +91,44 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       {isMobile && sidebarOpen && <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setSidebarOpen(false)} />}
       {sidebar}
       <main className={cn("flex-1", !isMobile && "pl-64")}>
-        {isMobile && (
-          <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background px-4">
+        {/* Top bar */}
+        <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background px-4">
+          {isMobile && (
             <button onClick={() => setSidebarOpen(true)}><Menu className="h-5 w-5" /></button>
-            <span className="font-semibold flex-1">Qazi Enterprises</span>
+          )}
+          <span className="font-semibold flex-1">{isMobile ? "Qazi Enterprises" : ""}</span>
+
+          {/* Online/Offline indicator */}
+          <div className="flex items-center gap-1.5">
+            {isOnline ? (
+              <span className="flex items-center gap-1 text-xs text-success">
+                <Wifi className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Online</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-xs text-destructive">
+                <WifiOff className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Offline</span>
+              </span>
+            )}
+            {queueLength > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1 text-warning"
+                onClick={syncQueue}
+                disabled={syncing || !isOnline}
+              >
+                <RefreshCw className={cn("h-3 w-3", syncing && "animate-spin")} />
+                {queueLength} pending
+              </Button>
+            )}
           </div>
-        )}
+
+          {/* Notifications */}
+          <NotificationsCenter />
+        </div>
+
         <div className="p-4 lg:p-8">{children}</div>
       </main>
     </div>
