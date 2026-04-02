@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Search, X, Users, Truck, Pencil, Trash2, Save, Phone, Mail, MapPin, Download, Upload } from "lucide-react";
+import { Plus, Search, X, Users, Truck, Pencil, Trash2, Save, Phone, Mail, MapPin, Download, Upload, FileText } from "lucide-react";
 import { exportToExcel, importFromExcel, printAsPDF } from "@/lib/exportUtils";
+import { generateCustomerStatementPDF } from "@/lib/customerStatement";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
