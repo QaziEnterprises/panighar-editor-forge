@@ -680,6 +680,18 @@ export default function BillsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Return Dialog */}
+      {returnSale && (
+        <ReturnDialog
+          open={returnOpen}
+          onOpenChange={setReturnOpen}
+          saleId={returnSale.id}
+          invoiceNo={returnSale.invoice_no}
+          saleItems={returnItems}
+          onReturnComplete={() => { fetchBills(); setReturnSale(null); }}
+        />
+      )}
     </div>
   );
 }
