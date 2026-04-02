@@ -318,6 +318,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          message: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       price_list_items: {
         Row: {
           created_at: string
@@ -611,6 +644,95 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "receivable_payments_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sale_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      return_items: {
+        Row: {
+          id: string
+          product_id: string | null
+          product_name: string | null
+          quantity: number
+          return_id: string
+          subtotal: number
+          unit_price: number
+        }
+        Insert: {
+          id?: string
+          product_id?: string | null
+          product_name?: string | null
+          quantity?: number
+          return_id: string
+          subtotal?: number
+          unit_price?: number
+        }
+        Update: {
+          id?: string
+          product_id?: string | null
+          product_name?: string | null
+          quantity?: number
+          return_id?: string
+          subtotal?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "returns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      returns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          notes: string | null
+          reason: string | null
+          refund_method: string | null
+          sale_id: string | null
+          total_refund: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          refund_method?: string | null
+          sale_id?: string | null
+          total_refund?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          refund_method?: string | null
+          sale_id?: string | null
+          total_refund?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "returns_sale_id_fkey"
             columns: ["sale_id"]
             isOneToOne: false
             referencedRelation: "sale_transactions"
