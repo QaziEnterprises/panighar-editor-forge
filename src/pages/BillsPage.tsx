@@ -62,6 +62,11 @@ export default function BillsPage() {
   const [deleteSale, setDeleteSale] = useState<SaleTransaction | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Return dialog
+  const [returnSale, setReturnSale] = useState<SaleTransaction | null>(null);
+  const [returnItems, setReturnItems] = useState<any[]>([]);
+  const [returnOpen, setReturnOpen] = useState(false);
+
   const printRef = useRef<HTMLDivElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
 
