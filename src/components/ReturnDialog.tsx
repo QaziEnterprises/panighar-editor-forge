@@ -195,7 +195,7 @@ export default function ReturnDialog({ open, onOpenChange, saleId, invoiceNo, sa
                       <Label className="text-xs">Qty:</Label>
                       <NumberInput
                         value={item.quantity}
-                        onChange={(v) => updateQty(idx, v)}
+                        onValueChange={(v) => updateQty(idx, v)}
                         min={1}
                         max={item.max_quantity}
                         className="w-20 h-8 text-sm"

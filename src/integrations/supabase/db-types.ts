@@ -143,6 +143,24 @@ export type Database = {
         Update: { id?: string; user_id?: string; role?: 'admin' | 'user'; created_at?: string }
         Relationships: []
       }
+      returns: {
+        Row: { id: string; sale_id: string | null; date: string; total_refund: number; refund_method: string | null; reason: string | null; notes: string | null; created_by: string | null; created_at: string }
+        Insert: { id?: string; sale_id?: string | null; date?: string; total_refund?: number; refund_method?: string | null; reason?: string | null; notes?: string | null; created_by?: string | null; created_at?: string }
+        Update: { id?: string; sale_id?: string | null; date?: string; total_refund?: number; refund_method?: string | null; reason?: string | null; notes?: string | null; created_by?: string | null; created_at?: string }
+        Relationships: []
+      }
+      return_items: {
+        Row: { id: string; return_id: string; product_id: string | null; product_name: string | null; quantity: number; unit_price: number; subtotal: number }
+        Insert: { id?: string; return_id: string; product_id?: string | null; product_name?: string | null; quantity?: number; unit_price?: number; subtotal?: number }
+        Update: { id?: string; return_id?: string; product_id?: string | null; product_name?: string | null; quantity?: number; unit_price?: number; subtotal?: number }
+        Relationships: []
+      }
+      notifications: {
+        Row: { id: string; user_id: string; title: string; message: string | null; type: string; is_read: boolean; link: string | null; created_at: string }
+        Insert: { id?: string; user_id: string; title: string; message?: string | null; type?: string; is_read?: boolean; link?: string | null; created_at?: string }
+        Update: { id?: string; user_id?: string; title?: string; message?: string | null; type?: string; is_read?: boolean; link?: string | null; created_at?: string }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
