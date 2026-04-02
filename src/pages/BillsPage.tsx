@@ -482,6 +482,9 @@ export default function BillsPage() {
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => viewBill(s)} title="View Invoice">
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openReturn(s)} title="Return/Refund">
+                          <RotateCcw className="h-4 w-4 text-warning" />
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditSale(s); setEditOpen(true); }} title="Edit Invoice">
                           <Pencil className="h-4 w-4" />
                         </Button>
