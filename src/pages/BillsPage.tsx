@@ -180,6 +180,13 @@ export default function BillsPage() {
     setDialogOpen(true);
   };
 
+  const openReturn = async (sale: SaleTransaction) => {
+    const { data } = await supabase.from("sale_items").select("*").eq("sale_id", sale.id);
+    setReturnSale(sale);
+    setReturnItems(data || []);
+    setReturnOpen(true);
+  };
+
   const handlePrint = () => {
     if (!printRef.current || !selectedSale) return;
     const printWindow = window.open("", "_blank");
