@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/customClient";
 import { retryQuery, retryMutation } from "@/lib/retryFetch";
 import { motion } from "framer-motion";
 import EditBillDialog from "@/components/EditBillDialog";
+import ReturnDialog from "@/components/ReturnDialog";
 
 interface SaleTransaction {
   id: string; invoice_no: string | null; date: string; customer_id: string | null;
