@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { UserPlus, Trash2, Shield, User, Pencil, Save, X } from "lucide-react";
+import { UserPlus, Trash2, Shield, User, Pencil, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/customClient";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -27,10 +28,10 @@ export default function AdminPage() {
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Edit state
   const [editUser, setEditUser] = useState<UserProfile | null>(null);
   const [editName, setEditName] = useState("");
   const [editPassword, setEditPassword] = useState("");
+  const [editRole, setEditRole] = useState("user");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const loadUsers = async () => {
@@ -101,6 +102,7 @@ export default function AdminPage() {
     setEditUser(u);
     setEditName(u.display_name || "");
     setEditPassword("");
+    setEditRole(u.role);
     setEditDialogOpen(true);
   };
 
@@ -114,6 +116,7 @@ export default function AdminPage() {
           userId: editUser.user_id,
           displayName: editName,
           password: editPassword || undefined,
+          role: editRole,
         },
       });
       if (error) throw error;
@@ -135,7 +138,6 @@ export default function AdminPage() {
         <p className="text-muted-foreground">Manage users and access control</p>
       </div>
 
-      {/* Add User Form */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -165,7 +167,6 @@ export default function AdminPage() {
         </CardContent>
       </Card>
 
-      {/* Users List */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">All Users ({users.length})</CardTitle>
@@ -196,22 +197,11 @@ export default function AdminPage() {
                     <Badge variant={u.role === "admin" ? "default" : "secondary"}>
                       {u.role}
                     </Badge>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      onClick={() => openEditDialog(u)}
-                      title="Edit user"
-                    >
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditDialog(u)} title="Edit user">
                       <Pencil className="h-4 w-4" />
                     </Button>
                     {u.role !== "admin" && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => removeUser(u.user_id, u.email)}
-                      >
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => removeUser(u.user_id, u.email)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
@@ -223,7 +213,6 @@ export default function AdminPage() {
         </CardContent>
       </Card>
 
-      {/* Edit User Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -233,6 +222,18 @@ export default function AdminPage() {
             <div className="space-y-1.5">
               <Label className="text-xs">Display Name</Label>
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Role</Label>
+              <Select value={editRole} onValueChange={setEditRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">New Password (leave blank to keep)</Label>

@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   );
 
   try {
-    const { action, email, password, displayName, userId } = await req.json();
+    const { action, email, password, displayName, userId, role } = await req.json();
 
     if (action === "create") {
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -42,6 +42,18 @@ Deno.serve(async (req) => {
       }
       const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, updates);
       if (error) return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      // Update role if provided
+      if (role) {
+        // Upsert: update existing role or insert new one
+        const { data: existingRole } = await supabaseAdmin.from("user_roles").select("id").eq("user_id", userId).maybeSingle();
+        if (existingRole) {
+          await supabaseAdmin.from("user_roles").update({ role }).eq("user_id", userId);
+        } else {
+          await supabaseAdmin.from("user_roles").insert({ user_id: userId, role });
+        }
+      }
+
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
