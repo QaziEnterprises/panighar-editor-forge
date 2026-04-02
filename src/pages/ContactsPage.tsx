@@ -240,6 +240,7 @@ export default function ContactsPage() {
                       <td className={`px-4 py-3 text-right font-medium ${Number(c.current_balance) > 0 ? "text-destructive" : ""}`}>Rs {Number(c.current_balance).toLocaleString()}</td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Download Statement" onClick={() => generateCustomerStatementPDF(c)}><FileText className="h-3.5 w-3.5 text-info" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(c)}><Pencil className="h-3.5 w-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(c.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                         </div>
