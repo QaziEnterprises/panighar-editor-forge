@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Search, X, Printer, Eye, FileText, Download, Upload, MessageCircle,
   Pencil, Trash2, ChevronLeft, ChevronRight, Filter, Receipt,
-  DollarSign, AlertCircle, CheckCircle, Clock, Calendar,
+  DollarSign, AlertCircle, CheckCircle, Clock, Calendar, RotateCcw,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { exportToExcel, importFromExcel } from "@/lib/exportUtils";
@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/customClient";
 import { retryQuery, retryMutation } from "@/lib/retryFetch";
 import { motion } from "framer-motion";
 import EditBillDialog from "@/components/EditBillDialog";
+import ReturnDialog from "@/components/ReturnDialog";
 
 interface SaleTransaction {
   id: string; invoice_no: string | null; date: string; customer_id: string | null;
@@ -60,6 +61,11 @@ export default function BillsPage() {
   // Delete dialog
   const [deleteSale, setDeleteSale] = useState<SaleTransaction | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Return dialog
+  const [returnSale, setReturnSale] = useState<SaleTransaction | null>(null);
+  const [returnItems, setReturnItems] = useState<any[]>([]);
+  const [returnOpen, setReturnOpen] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
@@ -172,6 +178,13 @@ export default function BillsPage() {
     const { data } = await supabase.from("sale_items").select("*").eq("sale_id", sale.id);
     setSaleItems(data || []);
     setDialogOpen(true);
+  };
+
+  const openReturn = async (sale: SaleTransaction) => {
+    const { data } = await supabase.from("sale_items").select("*").eq("sale_id", sale.id);
+    setReturnSale(sale);
+    setReturnItems(data || []);
+    setReturnOpen(true);
   };
 
   const handlePrint = () => {
@@ -469,6 +482,9 @@ export default function BillsPage() {
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => viewBill(s)} title="View Invoice">
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openReturn(s)} title="Return/Refund">
+                          <RotateCcw className="h-4 w-4 text-warning" />
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditSale(s); setEditOpen(true); }} title="Edit Invoice">
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -664,6 +680,18 @@ export default function BillsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Return Dialog */}
+      {returnSale && (
+        <ReturnDialog
+          open={returnOpen}
+          onOpenChange={setReturnOpen}
+          saleId={returnSale.id}
+          invoiceNo={returnSale.invoice_no}
+          saleItems={returnItems}
+          onReturnComplete={() => { refreshSales(); setReturnSale(null); }}
+        />
+      )}
     </div>
   );
 }
